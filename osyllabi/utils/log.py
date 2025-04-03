@@ -42,14 +42,11 @@ class ContextAwareFilter(logging.Filter):
         # Get context from thread local storage or use empty dict
         context = getattr(_thread_local, 'context', {})
         
-        # Format context as string
+        # Format context as string - add a leading hyphen when context exists
         if context:
-            context_str = ', '.join(f'{k}={v}' for k, v in context.items())
+            record.context = f" - {', '.join(f'{k}={v}' for k, v in context.items())}"
         else:
-            context_str = '-'
-            
-        # Add context to the record
-        record.context = context_str
+            record.context = ""
         return True
 
 
@@ -105,10 +102,10 @@ class ContextAwareLogger(logging.Logger):
                 return self.logger
                 
             def __exit__(self, exc_type, exc_val, exc_tb):
-                # Restore the previous context
                 if hasattr(_thread_local, 'context'):
                     _thread_local.context.clear()
-                    _thread_local.context.update(self.previous)
+                    if self.previous:
+                        _thread_local.context.update(self.previous)
                 
         return ContextManager(self)
 

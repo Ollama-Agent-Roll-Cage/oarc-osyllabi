@@ -33,5 +33,5 @@ SUPPORTED_FILE_EXTENSIONS = [
 ]
 
 # Export formats
-EXPORT_FORMATS = ['md', 'pdf', 'html', 'docx']
+EXPORT_FORMATS = ['md', 'pdf', 'html', 'docx', 'json']
 DEFAULT_EXPORT_FORMAT = os.getenv('OSYLLABUS_DEFAULT_FORMAT', 'md')

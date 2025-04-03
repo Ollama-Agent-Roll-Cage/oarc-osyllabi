@@ -60,8 +60,6 @@ def setup_parser() -> argparse.ArgumentParser:
             # Don't exit, just show help
             self.print_usage(sys.stderr)
             print(f"{self.prog}: error: {message}\n", file=sys.stderr)
-            show_help()
-            print(f"\nRun 'osyllabi {self.prog.split()[-1]} --help' for more information on this command.", file=sys.stderr)
             sys.exit(2)
 
     parser = CustomArgumentParser(
@@ -200,9 +198,7 @@ def parse_args(args: Optional[List[str]] = None):
             return parsed_args
             
         return parsed_args
-    except SystemExit:
-        # On parse error or help request, return args indicating help needed
-        return argparse.Namespace(
-            help_requested=True,
-            command=None if not args else args[0] if args[0] not in ['-h', '--help'] else None
-        )
+    except SystemExit as e:
+        # On parse error or help request, show help and then exit with appropriate code
+        show_help(None if not args else args[0] if args and args[0] not in ['-h', '--help'] and not args[0].startswith('-') else None)
+        sys.exit(e.code)

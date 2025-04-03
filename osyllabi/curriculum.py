@@ -3,8 +3,9 @@ Curriculum generation functionality.
 """
 import os
 import sys
+import json
 import argparse
-from typing import List, Optional, Union, Tuple, Any
+from typing import List, Optional, Union, Tuple
 from pathlib import Path
 from datetime import datetime
 
@@ -75,16 +76,13 @@ class Curriculum:
         """
         topic = args.topic.strip()
         if not topic:
-            log.error("Topic cannot be empty")
-            print("Error: Topic is required and cannot be empty", file=sys.stderr)
-            print(f"Run 'osyllabi create --help' for more information.", file=sys.stderr)
+            log.error("Error: Topic is required and cannot be empty")
+            log.error(f"Run 'osyllabi create --help' for more information.")
             return FAILURE, None
             
         log.info(f"Creating curriculum on topic: {topic}")
-        print(f"Creating curriculum on topic: {topic}")
         
         try:
-            # Initialize this instance
             self.topic = topic
             self.title = args.title.strip() if args.title and args.title.strip() else f"{topic} Curriculum"
             self.skill_level = args.level
@@ -93,52 +91,29 @@ class Curriculum:
             self.content = ""
             self.created_at = datetime.now()
             
-            # Generate the curriculum content
             self.generate_content()
             
             if args.export_path:
                 export_path = args.export_path
             else:
-                # Use default output directory if not specified
                 output_dir = get_output_directory()
                 filename = self.title
                 export_path = create_unique_file_path(output_dir, filename, args.format)
             
-            # Export the curriculum
-            try:
-                result_path = self.export(export_path, fmt=args.format)
-                log.info(f"Curriculum exported to {result_path}")
-                print(f"Curriculum exported to {result_path}")
-                return SUCCESS, result_path
-            except NotImplementedError as e:
-                log.error(f"Export error: {e}")
-                print(f"Export error: {e}", file=sys.stderr)
-                print(f"Supported formats are: {', '.join(args.format.choices)}")
-                return FAILURE, None
-            except Exception as e:
-                log.error(f"Error exporting curriculum: {e}")
-                print(f"Error exporting curriculum: {e}", file=sys.stderr)
-                return FAILURE, None
+            result_path = self.export(export_path, fmt=args.format)
+            log.info(f"Curriculum exported to {result_path}")
+            return SUCCESS, result_path
             
-        except ValueError as e:
-            log.error(f"Invalid input: {e}")
-            print(f"Error: {e}", file=sys.stderr)
-            return FAILURE, None
         except Exception as e:
-            log.error(f"Error creating curriculum: {e}")
-            print(f"Error creating curriculum: {e}", file=sys.stderr)
-            if 'OSYLLABI_DEBUG' in os.environ:
-                import traceback
-                traceback.print_exc()
-            return FAILURE, None
+            raise RuntimeError(f"Error creating curriculum: {e}")
         
     def generate_content(self) -> None:
         """Generate the content for the curriculum."""
         log.info(f"Generating curriculum content for topic: {self.topic}")
         
         with with_context(topic=self.topic, skill_level=self.skill_level):
-            # Generate basic structure
-            self.content = f"""# {self.title}
+            self.content = f"""
+# {self.title}
 
 ## Overview
 A curriculum for learning about {self.topic} at the {self.skill_level} level.
@@ -164,7 +139,7 @@ A curriculum for learning about {self.topic} at the {self.skill_level} level.
         
         Args:
             path: The file path to export to (directory or file)
-            fmt: The format to export as (md, pdf, html, docx)
+            fmt: The format to export as (md, pdf, html, docx, json)
             
         Returns:
             Path: The full path to the exported file
@@ -203,11 +178,25 @@ A curriculum for learning about {self.topic} at the {self.skill_level} level.
                     
                 log.info(f"Exported curriculum to {path} in {fmt} format")
                 return path
+            elif fmt == 'json':
+                data = {
+                    "meta": {
+                        "title": self.title,
+                        "topic": self.topic,
+                        "skill_level": self.skill_level,
+                        "created": self.created_at.isoformat()
+                    },
+                    "links": self.links,
+                    "sources": [str(s) for s in self.source],
+                    "content": self.content
+                }
+                
+                with open(path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                
+                log.info(f"Exported curriculum to {path} in {fmt} format")
+                return path
             else:
-                # For other formats, additional dependencies might be needed
-                log.error(f"Export to {fmt} format is not implemented")
-                raise NotImplementedError(f"Export to {fmt} is not yet implemented")
+                raise NotImplementedError(f"Unknown export {fmt} format")
         except IOError as e:
-            log.error(f"Error exporting curriculum: {e}")
-            print(f"Error exporting curriculum: {e}", file=sys.stderr)
-            raise
+            raise IOError(f"Error writing to file {path}: {e}")

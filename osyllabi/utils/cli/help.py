@@ -5,10 +5,12 @@ import sys
 import textwrap
 from typing import Dict, Optional, List, Tuple
 
+from osyllabi.utils.log import log
+
 
 def display_header() -> None:
     """Display the application header."""
-    from osyllabi import __version__  # Import version dynamically
+    from osyllabi import __version__
     
     print(f"\nOsyllabi - A Python-powered curriculum designer")
     print(f"Version: {__version__}\n")
@@ -41,14 +43,15 @@ def get_command_usage_info(command_name: str) -> Tuple[str, Dict[str, str], List
             "--links, -l": "URLs to include as resources",
             "--source": "Source files or directories to include\nDefault: current directory",
             "--export-path, -o": "Directory to export the curriculum",
-            "--format, -f": "Output format (md, pdf, html, docx)",
+            "--format, -f": "Output format (md, pdf, html, docx, json)",
             "--help, -h": "Display this help message"
         })
         examples = [
             'osyllabi create "Machine Learning" --title "ML Fundamentals" --level Beginner',
             'osyllabi create "Python Programming" --links "https://docs.python.org" --format pdf',
             'osyllabi create "Web Development" -t "Full Stack Web Dev" -s Advanced',
-            'osyllabi create "Data Science" --debug'  # Add example with debug flag
+            'osyllabi create "Data Science" --format json',
+            'osyllabi create "Data Science" --debug'
         ]
     elif command_name == "clean":
         usage += " [options]"
@@ -62,7 +65,7 @@ def get_command_usage_info(command_name: str) -> Tuple[str, Dict[str, str], List
         examples = [
             'osyllabi clean --all',
             'osyllabi clean --output-dir "./output" --force',
-            'osyllabi clean --all --debug'  # Add example with debug flag
+            'osyllabi clean --all --debug'
         ]
     elif command_name == "help":
         usage += " [command]"
@@ -73,7 +76,7 @@ def get_command_usage_info(command_name: str) -> Tuple[str, Dict[str, str], List
         examples = [
             'osyllabi help',
             'osyllabi help create',
-            'osyllabi help --debug'  # Add example with debug flag
+            'osyllabi help --debug'
         ]
     
     return usage, options, examples
@@ -91,31 +94,25 @@ def display_command_help(command_name: str, command_descriptions: Dict[str, str]
         display_help_for_unknown_command(command_name)
         return
         
-    display_header()  # Add header for consistency
+    log.debug(f"Displaying help for command: {command_name}")
+    display_header()
         
     description = command_descriptions[command_name]
     usage, options, examples = get_command_usage_info(command_name)
     
-    # Display command title and description
     print(f"\nOSYLLABI {command_name.upper()}")
     print(f"\n{description}\n")
-    
-    # Display usage
     print(usage)
     
-    # Display options if available
     if options:
         print("\nOptions:" if not command_name == "help" else "\nArguments:")
-        # Calculate max length for right-aligned formatting
         max_opt_len = max(len(opt) for opt in options.keys())
         for opt, desc in options.items():
-            # For multi-line descriptions, handle proper indentation
             desc_lines = desc.split('\n')
             print(f"  {opt.ljust(max_opt_len)}    {desc_lines[0]}")
             for line in desc_lines[1:]:
                 print(f"  {' ' * max_opt_len}    {line}")
     
-    # Display examples if available
     if examples:
         print("\nExamples:")
         for example in examples:
@@ -124,6 +121,7 @@ def display_command_help(command_name: str, command_descriptions: Dict[str, str]
 
 def display_general_help(command_descriptions: Dict[str, str]) -> None:
     """Display general help for all commands."""
+    log.debug("Displaying general help")
     display_header()
     
     print("Usage: osyllabi [options] COMMAND [command-options]")
@@ -154,8 +152,8 @@ def display_epilog() -> None:
 
 def display_help_for_unknown_command(attempted_command: str) -> None:
     """Display help message for an unknown command."""
-    print(f"\nUnknown command: '{attempted_command}'")
-    print("\nRun 'osyllabi help' to see available commands.")
+    log.warning(f"Unknown command requested: '{attempted_command}'")
+
 
 
 def show_help(command: Optional[str] = None) -> None:
