@@ -3,22 +3,10 @@
 Main entry point for Osyllabi application.
 """
 import sys
-import os
-import argparse
 from typing import Optional, List
 
-from osyllabi.utils.utils import setup_logging, is_debug_mode
+from osyllabi.utils.log import log, is_debug_mode
 from osyllabi.utils.cli.router import handle
-
-
-def configure_environment() -> None:
-    """Configure the application environment."""
-    # Set up logging based on environment
-    log_level = "DEBUG" if is_debug_mode() else "INFO"
-    
-    # Configure logging
-    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
-    setup_logging(level=numeric_level)
 
 
 def main(args: Optional[List[str]] = None) -> int:
@@ -32,9 +20,6 @@ def main(args: Optional[List[str]] = None) -> int:
         int: Exit code
     """
     try:
-        # Configure environment
-        configure_environment()
-        
         # Handle CLI commands
         return handle(args)
     except KeyboardInterrupt:

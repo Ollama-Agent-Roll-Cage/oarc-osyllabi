@@ -3,65 +3,17 @@ General utility functions for the Osyllabi project.
 """
 import os
 import sys
-import logging
 import platform
 import tempfile
-from datetime import datetime
-from typing import Any, Optional, List, Dict, Union, TypeVar, Callable
+
 from pathlib import Path
+from datetime import datetime
+from typing import Any, List, Dict, Union, TypeVar, Callable
+
+from osyllabi.utils.log import log
 
 # Type variable for generic functions
 T = TypeVar('T')
-
-
-def setup_logging(level: int = logging.INFO, log_file: Optional[str] = None) -> logging.Logger:
-    """
-    Set up logging with consistent formatting.
-    
-    Args:
-        level: Logging level (default: INFO)
-        log_file: Optional file path to write logs to
-        
-    Returns:
-        Logger: Configured logger instance
-    """
-    logger = logging.getLogger('osyllabi')
-    logger.setLevel(level)
-    
-    # Clear existing handlers to avoid duplicates
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
-    
-    # Define formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    
-    # Console handler
-    console = logging.StreamHandler(sys.stdout)
-    console.setLevel(level)
-    console.setFormatter(formatter)
-    logger.addHandler(console)
-    
-    # File handler if specified
-    if log_file:
-        log_path = Path(log_file)
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setLevel(level)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-    
-    return logger
-
-
-def is_debug_mode() -> bool:
-    """
-    Check if debug mode is enabled via environment variable.
-    
-    Returns:
-        bool: True if debug mode is enabled
-    """
-    return os.environ.get('OSYLLABI_DEBUG', '').lower() in ('1', 'true', 'yes')
 
 
 def safe_to_int(value: Any, default: int = 0) -> int:
@@ -130,6 +82,7 @@ def find_files_by_extensions(
                 result.append(path)
     except PermissionError:
         # Handle permission errors gracefully
+        log.warning(f"Permission denied when accessing {root_path}")
         pass
                 
     return result
@@ -192,7 +145,7 @@ def get_system_info() -> Dict[str, str]:
 
 
 def retry(attempts: int = 3, delay: float = 1.0, backoff: float = 2.0, 
-          exceptions: tuple = (Exception,), logger: Optional[logging.Logger] = None):
+          exceptions: tuple = (Exception,)):
     """
     Retry decorator with exponential backoff for functions.
     
@@ -201,7 +154,6 @@ def retry(attempts: int = 3, delay: float = 1.0, backoff: float = 2.0,
         delay: Initial delay between retries in seconds
         backoff: Backoff multiplier
         exceptions: Tuple of exceptions to catch
-        logger: Optional logger for logging retries
         
     Returns:
         Function decorator
@@ -210,14 +162,14 @@ def retry(attempts: int = 3, delay: float = 1.0, backoff: float = 2.0,
         def wrapper(*args, **kwargs) -> T:
             nonlocal delay
             last_exception = None
+            func_name = getattr(func, '__name__', 'unknown_function')
             
             for attempt in range(1, attempts + 1):
                 try:
                     return func(*args, **kwargs)
                 except exceptions as e:
                     last_exception = e
-                    if logger:
-                        logger.warning(f"Attempt {attempt}/{attempts} failed: {str(e)}")
+                    log.warning(f"Attempt {attempt}/{attempts} for {func_name} failed: {str(e)}")
                     
                     if attempt < attempts:
                         import time
@@ -225,8 +177,7 @@ def retry(attempts: int = 3, delay: float = 1.0, backoff: float = 2.0,
                         delay *= backoff
             
             # If we get here, all attempts failed
-            if logger:
-                logger.error(f"All {attempts} attempts failed")
+            log.error(f"All {attempts} attempts for {func_name} failed")
             
             # Re-raise the last exception
             raise last_exception

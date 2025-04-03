@@ -3,12 +3,11 @@ Centralized argument parser for CLI commands.
 """
 import argparse
 import sys
-import os
 from pathlib import Path
 from typing import List, Optional
 
 from osyllabi.config import EXPORT_FORMATS, DEFAULT_EXPORT_FORMAT
-
+from osyllabi.utils.cli.help import show_help
 
 def validate_path_arg(path: str, must_exist: bool = False) -> str:
     """
@@ -54,12 +53,17 @@ def validate_url(url: str) -> str:
 def setup_parser() -> argparse.ArgumentParser:
     """
     Set up the command line argument parser with all available commands.
-    
-    Returns:
-        argparse.ArgumentParser: Configured argument parser
     """
-    # Initialize the argument parser
-    parser = argparse.ArgumentParser(
+    class CustomArgumentParser(argparse.ArgumentParser):
+        def error(self, message):
+            # Don't exit, just show help
+            self.print_usage(sys.stderr)
+            print(f"{self.prog}: error: {message}\n", file=sys.stderr)
+            show_help()
+            print(f"\nRun 'osyllabi {self.prog.split()[-1]} --help' for more information on this command.", file=sys.stderr)
+            sys.exit(2)
+
+    parser = CustomArgumentParser(
         description="Osyllabi: Create and manage personalized curriculums",
         add_help=False  # Disable built-in help to use our custom help
     )
@@ -169,10 +173,15 @@ def parse_args(args: Optional[List[str]] = None):
     
     try:
         parsed_args = parser.parse_args(args)
+        
+        # If help is requested for a subcommand, we want to handle it ourselves
+        if parsed_args.help_requested and parsed_args.command:
+            return parsed_args
+            
         return parsed_args
     except SystemExit:
-        # Handle the case when argparse exits due to argument errors
+        # On parse error or help request, return args indicating help needed
         return argparse.Namespace(
             help_requested=True,
-            command=None
+            command=None if not args else args[0] if args[0] not in ['-h', '--help'] else None
         )

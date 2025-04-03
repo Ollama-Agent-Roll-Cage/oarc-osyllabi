@@ -62,28 +62,22 @@ def handle(args_list: Optional[List[str]] = None) -> int:
         if args_list is None:
             args_list = sys.argv[1:]
             
-        # Pre-check if help is requested for simpler handling
-        if is_help_requested(args_list):
-            args = parse_args(args_list)
-            
-            # If it's "help <command>"
-            if args.command == 'help' and hasattr(args, 'subcommand') and args.subcommand:
-                show_help(args.subcommand)
-                return SUCCESS
-            
-            # If it's "<command> --help"
-            elif hasattr(args, 'command') and args.command in COMMAND_DESCRIPTIONS:
-                show_help(args.command)
-                return SUCCESS
-            
-            # Default to general help
-            else:
-                show_help()
-                return SUCCESS
-        
-        # Normal command processing
+        # Parse arguments first
         args = parse_args(args_list)
         
+        # Handle help requests consistently
+        if args.help_requested or (args.command == 'help' and not getattr(args, 'subcommand', None)):
+            show_help()
+            return SUCCESS
+            
+        # If it's "help <command>" or "<command> --help"
+        if args.command == 'help' and hasattr(args, 'subcommand') and args.subcommand:
+            show_help(args.subcommand)
+            return SUCCESS
+        elif hasattr(args, 'help_requested') and args.help_requested and args.command:
+            show_help(args.command)
+            return SUCCESS
+            
         # Handle unknown or missing command
         if not args.command:
             show_help()

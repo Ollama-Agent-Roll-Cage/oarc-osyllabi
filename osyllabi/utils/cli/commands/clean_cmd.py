@@ -8,6 +8,7 @@ from pathlib import Path
 
 from osyllabi.utils.cli.cmd import Command
 from osyllabi.utils.cli.parser import setup_clean_arguments
+from osyllabi.utils.log import log
 from osyllabi.utils.const import SUCCESS, FAILURE
 
 
@@ -17,12 +18,11 @@ class CleanCommand(Command):
     @classmethod
     def register(cls, parser: argparse.ArgumentParser) -> None:
         """Register command-specific arguments to the parser."""
-        # Use the centralized parser function to setup arguments
         setup_clean_arguments(parser)
     
     def execute(self) -> int:
         """Execute the command and return the exit code."""
-        print("Cleaning up...")
+        log.info("Cleaning up...")
         
         try:
             if self.args.output_dir:
@@ -32,13 +32,16 @@ class CleanCommand(Command):
             elif self.args.all:
                 self._clean_all()
             else:
+                log.warning("No cleaning action specified. Use --output-dir, --cache, or --all.")
                 print("No cleaning action specified. Use --output-dir, --cache, or --all.")
                 print("Run 'osyllabi help clean' for more information.")
                 return FAILURE
                 
+            log.info("Clean completed successfully!")
             print("Clean completed successfully!")
             return SUCCESS
         except Exception as e:
+            log.error(f"Error during cleanup: {e}")
             print(f"Error during cleanup: {e}", file=sys.stderr)
             return FAILURE
     
@@ -53,12 +56,14 @@ class CleanCommand(Command):
             PermissionError: If there are permission issues
         """
         if not directory.exists():
+            log.info(f"Directory {directory} does not exist.")
             print(f"Directory {directory} does not exist.")
             return
             
         if not self.args.force:
             confirm = input(f"Are you sure you want to clean {directory}? [y/N] ")
             if confirm.lower() != 'y':
+                log.info("Operation cancelled by user.")
                 print("Operation cancelled.")
                 return
         
@@ -66,7 +71,7 @@ class CleanCommand(Command):
             # Count items before cleaning for better feedback
             item_count = sum(1 for _ in directory.glob("*"))
             
-            # Clean items
+            # Clean the directory
             deleted_files = 0
             deleted_dirs = 0
             
@@ -80,36 +85,46 @@ class CleanCommand(Command):
                     
             # Show detailed cleanup report
             if item_count > 0:
+                log.info(f"Cleaned directory: {directory} (removed {deleted_files} files, {deleted_dirs} directories)")
                 print(f"Cleaned directory: {directory}")
                 print(f"  Removed {deleted_files} files and {deleted_dirs} directories")
             else:
+                log.info(f"Directory {directory} was already empty.")
                 print(f"Directory {directory} was already empty.")
                 
         except PermissionError:
-            print(f"Permission denied when cleaning {directory}. Try running with elevated privileges.", file=sys.stderr)
+            error_msg = f"Permission denied when cleaning {directory}. Try running with elevated privileges."
+            log.error(error_msg)
+            print(error_msg, file=sys.stderr)
             raise
     
     def _clean_cache(self) -> None:
         """Clean cached files."""
         cache_dir = Path.home() / ".cache" / "osyllabi"
+        log.info(f"Cleaning cache directory: {cache_dir}")
         if cache_dir.exists():
             self._clean_directory(cache_dir)
         else:
+            log.info("No cache directory found.")
             print("No cache directory found.")
     
     def _clean_all(self) -> None:
         """Clean all generated files."""
         from osyllabi.config import OUTPUT_DIR
         
+        log.info("Performing full cleanup")
         print("Performing full cleanup:")
         
         # Clean output directory if it exists
         if OUTPUT_DIR.exists():
+            log.info(f"Cleaning output directory: {OUTPUT_DIR}")
             print(f"- Cleaning output directory: {OUTPUT_DIR}")
             self._clean_directory(OUTPUT_DIR)
         else:
+            log.info(f"Output directory not found: {OUTPUT_DIR}")
             print(f"- Output directory not found: {OUTPUT_DIR}")
             
         # Clean cache
+        log.info("Cleaning cache")
         print("- Cleaning cache")
         self._clean_cache()

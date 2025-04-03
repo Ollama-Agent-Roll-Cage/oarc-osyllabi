@@ -8,6 +8,8 @@ from typing import List, Optional, Union
 from pathlib import Path
 from datetime import datetime
 
+from osyllabi.utils.log import log
+
 
 class Curriculum:
     """Represents a generated curriculum."""
@@ -24,6 +26,8 @@ class Curriculum:
         self.title = title or f"{topic} Curriculum"
         self.content = ""
         self.created_at = datetime.now()
+        
+        log.debug(f"Created new curriculum: {self.title}")
     
     def export(self, path: Union[str, Path], fmt: str = 'md') -> Path:
         """
@@ -64,11 +68,14 @@ class Curriculum:
                     metadata = f"---\ntitle: {self.title}\ntopic: {self.topic}\ncreated: {self.created_at.isoformat()}\n---\n\n"
                     f.write(metadata + self.content)
                     
+                log.info(f"Exported curriculum to {path} in {fmt} format")
                 return path
             else:
                 # For other formats, additional dependencies might be needed
+                log.error(f"Export to {fmt} format is not implemented")
                 raise NotImplementedError(f"Export to {fmt} is not yet implemented")
         except IOError as e:
+            log.error(f"Error exporting curriculum: {e}")
             print(f"Error exporting curriculum: {e}", file=sys.stderr)
             raise
             
@@ -100,6 +107,8 @@ class CurriculumGenerator:
         self.links = links or []
         self.source = source or ["."]
         
+        log.debug(f"Initialized curriculum generator for topic: {topic}, skill level: {skill_level}")
+        
     def create(self) -> Curriculum:
         """
         Generate a curriculum based on the configured parameters.
@@ -107,24 +116,29 @@ class CurriculumGenerator:
         Returns:
             Curriculum: The generated curriculum
         """
-        curriculum = Curriculum(self.topic, self.title)
+        log.info(f"Generating curriculum for topic: {self.topic}")
         
-        # Generate basic structure
-        curriculum.content = f"""# {curriculum.title}
+        with log.with_context(topic=self.topic, skill_level=self.skill_level):
+            curriculum = Curriculum(self.topic, self.title)
+            
+            # Generate basic structure
+            curriculum.content = f"""# {curriculum.title}
 
 ## Overview
 A curriculum for learning about {self.topic} at the {self.skill_level} level.
 
 ## Resources
 """
-        
-        # Add links
-        if self.links:
-            curriculum.content += "\n### External Links\n"
-            for link in self.links:
-                curriculum.content += f"- [{link}]({link})\n"
-        
-        # Add placeholder for content sections that would be filled by more advanced implementation
-        curriculum.content += "\n## Learning Path\n\n*Curriculum content generation in progress...*\n"
-        
-        return curriculum
+            
+            # Add links
+            if self.links:
+                log.debug(f"Adding {len(self.links)} external links to curriculum")
+                curriculum.content += "\n### External Links\n"
+                for link in self.links:
+                    curriculum.content += f"- [{link}]({link})\n"
+            
+            # Add placeholder for content sections that would be filled by more advanced implementation
+            curriculum.content += "\n## Learning Path\n\n*Curriculum content generation in progress...*\n"
+            
+            log.info(f"Created curriculum: {curriculum.title}")
+            return curriculum

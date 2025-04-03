@@ -81,9 +81,10 @@ def display_command_help(command_name: str, command_descriptions: Dict[str, str]
         command_descriptions: Dictionary of command names to their descriptions
     """
     if command_name not in command_descriptions:
-        print(f"\nUnknown command: {command_name}", file=sys.stderr)
-        print("\nRun 'osyllabi help' to see available commands.")
+        display_help_for_unknown_command(command_name)
         return
+        
+    display_header()  # Add header for consistency
         
     description = command_descriptions[command_name]
     usage, options, examples = get_command_usage_info(command_name)
@@ -128,7 +129,7 @@ def display_general_help(command_descriptions: Dict[str, str]) -> None:
     print("\nOptions:")
     print("  --help, -h         Display help for a command")
     
-    print("\nRun 'osyllabi help <command>' for more information on a specific command.")
+    print("\nRun 'osyllabi <command> --help' for more information on a specific command.")
 
 
 def display_epilog() -> None:
