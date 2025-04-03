@@ -1,10 +1,14 @@
 """
 Generation command for creating curriculums.
 """
+import os
 import argparse
+import sys
 
 from osyllabi.utils.cli.cmd import Command
 from osyllabi.utils.cli.parser import setup_create_arguments
+from osyllabi.utils.const import SUCCESS, FAILURE
+from osyllabi.utils.paths import get_output_directory, create_unique_file_path
 
 
 class CreateCommand(Command):
@@ -13,14 +17,19 @@ class CreateCommand(Command):
     @classmethod
     def register(cls, parser: argparse.ArgumentParser) -> None:
         """Register command-specific arguments to the parser."""
-        # Use the centralized parser function to setup arguments
         setup_create_arguments(parser)
     
     def execute(self) -> int:
         """Execute the command and return the exit code."""
-        # Only import CurriculumGenerator when actually needed for execution
-        from osyllabi import CurriculumGenerator
-        return self._create_curriculum(CurriculumGenerator)
+        try:
+            from osyllabi import CurriculumGenerator
+            return self._create_curriculum(CurriculumGenerator)
+        except Exception as e:
+            print(f"Error creating curriculum: {e}", file=sys.stderr)
+            if 'OSYLLABI_DEBUG' in os.environ:
+                import traceback
+                traceback.print_exc()
+            return FAILURE
     
     def _create_curriculum(self, generator_class) -> int:
         """Generate a new curriculum based on CLI arguments."""
@@ -29,7 +38,7 @@ class CreateCommand(Command):
         generator = generator_class(
             topic=self.args.topic,
             title=self.args.title,
-            skill_level=self.args.level,  # Changed from skill_level to level
+            skill_level=self.args.level,
             links=self.args.links,
             source=self.args.source
         )
@@ -37,10 +46,22 @@ class CreateCommand(Command):
         curriculum = generator.create()
         
         if self.args.export_path:
-            curriculum.export(
-                self.args.export_path,
-                fmt=self.args.format
-            )
-            print(f"Curriculum exported to {self.args.export_path}")
+            export_path = self.args.export_path
+        else:
+            # Use default output directory if not specified
+            output_dir = get_output_directory()
+            filename = curriculum.title if curriculum.title else curriculum.topic
+            export_path = create_unique_file_path(output_dir, filename, self.args.format)
         
-        return 0
+        # Export the curriculum
+        try:
+            result_path = curriculum.export(export_path, fmt=self.args.format)
+            print(f"Curriculum exported to {result_path}")
+            return SUCCESS
+        except NotImplementedError as e:
+            print(f"Export error: {e}", file=sys.stderr)
+            print(f"Supported formats are: {', '.join(self.args.format.choices)}")
+            return FAILURE
+        except Exception as e:
+            print(f"Error exporting curriculum: {e}", file=sys.stderr)
+            return FAILURE

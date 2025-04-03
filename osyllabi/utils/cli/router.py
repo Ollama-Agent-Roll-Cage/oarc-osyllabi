@@ -1,8 +1,10 @@
 """
 Command router for CLI operations.
 """
+import os
 import sys
-from typing import Type
+import traceback
+from typing import Type, Optional, List
 
 from osyllabi.utils.cli.cmd import Command
 from osyllabi.utils.cli.cmd_types import CommandType
@@ -18,12 +20,19 @@ COMMAND_DESCRIPTIONS = {
     CommandType.CLEAN.value: "Clean up generated files and temporary data",
 }
 
+
 def get_command(command_type: str) -> Type[Command]:
     """
     Dynamically import and return the command class.
     
-    Map of command types to their implementation classes
-    Using lazy loading to avoid import errors when just displaying help
+    Args:
+        command_type: String identifier for the command
+        
+    Returns:
+        Command class for the specified command type
+        
+    Raises:
+        ValueError: If command type is unknown
     """
     if command_type == CommandType.CREATE.value:
         from osyllabi.utils.cli.commands.create_cmd import CreateCommand
@@ -38,17 +47,24 @@ def get_command(command_type: str) -> Type[Command]:
         raise ValueError(f"Unknown command: {command_type}")
 
 
-def handle() -> int:
+def handle(args_list: Optional[List[str]] = None) -> int:
     """
     Parse command line arguments and route to appropriate handler.
     
+    Args:
+        args_list: Command line arguments, defaults to sys.argv[1:]
+        
     Returns:
         int: Exit code (0 for success, non-zero for errors)
     """
     try:
+        # Use provided args or default to sys.argv[1:]
+        if args_list is None:
+            args_list = sys.argv[1:]
+            
         # Pre-check if help is requested for simpler handling
-        if is_help_requested(sys.argv[1:]):
-            args = parse_args()
+        if is_help_requested(args_list):
+            args = parse_args(args_list)
             
             # If it's "help <command>"
             if args.command == 'help' and hasattr(args, 'subcommand') and args.subcommand:
@@ -66,7 +82,7 @@ def handle() -> int:
                 return SUCCESS
         
         # Normal command processing
-        args = parse_args()
+        args = parse_args(args_list)
         
         # Handle unknown or missing command
         if not args.command:
@@ -82,6 +98,18 @@ def handle() -> int:
         command = cmd_class(args)
         return command.execute()
     
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user.")
+        return FAILURE
+        
     except Exception as e:
+        # Provide more detailed error information to help with debugging
         print(f"Error: {e}", file=sys.stderr)
+        
+        # Check for debug mode environment variable
+        if os.environ.get('OSYLLABI_DEBUG', '').lower() in ('1', 'true', 'yes'):
+            print("\nDetailed traceback:", file=sys.stderr)
+            traceback.print_exc()
+            
+        print("\nRun with environment variable OSYLLABI_DEBUG=1 for detailed error information.", file=sys.stderr)
         return FAILURE

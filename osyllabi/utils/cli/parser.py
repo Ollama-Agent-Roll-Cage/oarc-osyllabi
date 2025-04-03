@@ -3,8 +3,52 @@ Centralized argument parser for CLI commands.
 """
 import argparse
 import sys
+import os
+from pathlib import Path
+from typing import List, Optional
 
 from osyllabi.config import EXPORT_FORMATS, DEFAULT_EXPORT_FORMAT
+
+
+def validate_path_arg(path: str, must_exist: bool = False) -> str:
+    """
+    Validate a file or directory path argument.
+    
+    Args:
+        path: The path to validate
+        must_exist: Whether the path must already exist
+        
+    Returns:
+        str: The validated path string
+        
+    Raises:
+        argparse.ArgumentTypeError: If path validation fails
+    """
+    path_obj = Path(path)
+    
+    if must_exist and not path_obj.exists():
+        raise argparse.ArgumentTypeError(f"Path does not exist: {path}")
+        
+    return str(path_obj)
+
+
+def validate_url(url: str) -> str:
+    """
+    Validate a URL argument.
+    
+    Args:
+        url: The URL to validate
+        
+    Returns:
+        str: The validated URL
+        
+    Raises:
+        argparse.ArgumentTypeError: If URL validation fails
+    """
+    # Very basic URL validation
+    if not url.startswith(('http://', 'https://')):
+        raise argparse.ArgumentTypeError(f"Invalid URL format (must start with http:// or https://): {url}")
+    return url
 
 
 def setup_parser() -> argparse.ArgumentParser:
@@ -64,16 +108,19 @@ def setup_create_arguments(parser: argparse.ArgumentParser) -> None:
         "--links", "-l", 
         nargs="+", 
         default=[],
+        type=validate_url,
         help="URLs to include as resources"
     )
     parser.add_argument(
         "--source", 
         nargs="+", 
         default=["."],
+        type=lambda x: validate_path_arg(x, must_exist=True),
         help="Source files or directories to include"
     )
     parser.add_argument(
         "--export-path", "-o",
+        type=validate_path_arg,
         help="Directory to export the curriculum"
     )
     parser.add_argument(
@@ -88,6 +135,7 @@ def setup_clean_arguments(parser: argparse.ArgumentParser) -> None:
     """Set up arguments for the clean command."""
     parser.add_argument(
         "--output-dir",
+        type=validate_path_arg,
         help="Clean specific output directory"
     )
     parser.add_argument(
@@ -107,20 +155,24 @@ def setup_clean_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def parse_args():
+def parse_args(args: Optional[List[str]] = None):
     """
     Parse command line arguments.
     
+    Args:
+        args: Command line arguments to parse, defaults to sys.argv[1:]
+        
     Returns:
         argparse.Namespace: Parsed arguments
     """
     parser = setup_parser()
     
     try:
-        args = parser.parse_args()
+        parsed_args = parser.parse_args(args)
+        return parsed_args
     except SystemExit:
-        args = argparse.Namespace()
-        args.help_requested = True
-        args.command = None
-    
-    return args
+        # Handle the case when argparse exits due to argument errors
+        return argparse.Namespace(
+            help_requested=True,
+            command=None
+        )

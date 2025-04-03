@@ -1,5 +1,11 @@
-from pathlib import Path
+"""
+Configuration settings for the Osyllabi project.
+
+This module contains global configuration settings that can be overridden
+via environment variables for customizing application behavior.
+"""
 import os
+from pathlib import Path
 
 # Base paths
 BASE_DIR = Path(__file__).resolve().parent.parent

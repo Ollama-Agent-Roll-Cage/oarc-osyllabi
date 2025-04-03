@@ -3,67 +3,115 @@ Help utilities for CLI commands.
 """
 import sys
 import textwrap
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple
 
 
 def display_header() -> None:
     """Display the application header."""
-    print("\nOsyllabi - A Python-powered curriculum designer")
-    print("Version: 0.1.0\n")
+    from osyllabi import __version__  # Import version dynamically
+    
+    print(f"\nOsyllabi - A Python-powered curriculum designer")
+    print(f"Version: {__version__}\n")
     print("Generates personalized curriculums using AI, web crawling, and data integration.\n")
 
 
+def get_command_usage_info(command_name: str) -> Tuple[str, Dict[str, str], List[str]]:
+    """
+    Get usage info for a specific command.
+    
+    Args:
+        command_name: Name of the command
+        
+    Returns:
+        Tuple containing usage string, options dict, and examples list
+    """
+    # Default usage pattern
+    usage = f"Usage: osyllabi {command_name}"
+    options = {}
+    examples = []
+    
+    if command_name == "create":
+        usage += " TOPIC [options]"
+        options = {
+            "--title, -t": "Title of the curriculum",
+            "--level, -s": "Target skill level (Beginner, Intermediate, Advanced, Expert)",
+            "--links, -l": "URLs to include as resources",
+            "--source": "Source files or directories to include\nDefault: current directory",
+            "--export-path, -o": "Directory to export the curriculum",
+            "--format, -f": "Output format (md, pdf, html, docx)",
+            "--help, -h": "Display this help message"
+        }
+        examples = [
+            'osyllabi create "Machine Learning" --title "ML Fundamentals" --level Beginner',
+            'osyllabi create "Python Programming" --links "https://docs.python.org" --format pdf'
+        ]
+    elif command_name == "clean":
+        usage += " [options]"
+        options = {
+            "--output-dir": "Clean specific output directory",
+            "--all, -a": "Clean all generated files",
+            "--cache": "Clean only cached files",
+            "--force, -f": "Force clean without confirmation",
+            "--help, -h": "Display this help message"
+        }
+        examples = [
+            'osyllabi clean --all',
+            'osyllabi clean --output-dir "./output" --force'
+        ]
+    elif command_name == "help":
+        usage += " [command]"
+        options = {
+            "command": "Command to get help for",
+            "--help, -h": "Display this help message"
+        }
+        examples = [
+            'osyllabi help',
+            'osyllabi help create'
+        ]
+    
+    return usage, options, examples
+
+
 def display_command_help(command_name: str, command_descriptions: Dict[str, str]) -> None:
-    """Display help for a specific command."""
+    """
+    Display help for a specific command.
+    
+    Args:
+        command_name: Name of the command to display help for
+        command_descriptions: Dictionary of command names to their descriptions
+    """
     if command_name not in command_descriptions:
         print(f"\nUnknown command: {command_name}", file=sys.stderr)
         print("\nRun 'osyllabi help' to see available commands.")
         return
         
     description = command_descriptions[command_name]
+    usage, options, examples = get_command_usage_info(command_name)
     
+    # Display command title and description
     print(f"\nOSYLLABI {command_name.upper()}")
     print(f"\n{description}\n")
     
-    # Command-specific details with more netstat-like formatting
-    if command_name == "create":
-        print("Usage: osyllabi create TOPIC [options]")
-        print("\nOptions:")
-        print("  --title, -t        Title of the curriculum")
-        print("  --level, -s        Target skill level (Beginner, Intermediate, Advanced, Expert)")
-        print("  --links, -l        URLs to include as resources")
-        print("  --source           Source files or directories to include")
-        print("                     Default: current directory")
-        print("  --export-path, -o  Directory to export the curriculum")
-        print("  --format, -f       Output format (md, pdf, html, docx)")
-        print("  --help, -h         Display this help message")
-        
-    elif command_name == "clean":
-        print("Usage: osyllabi clean [options]")
-        print("\nOptions:")
-        print("  --output-dir       Clean specific output directory")
-        print("  --all, -a          Clean all generated files")
-        print("  --cache            Clean only cached files")
-        print("  --force, -f        Force clean without confirmation")
-        print("  --help, -h         Display this help message")
-        
-    elif command_name == "help":
-        print("Usage: osyllabi help [command]")
-        print("\nArguments:")
-        print("  command            Command to get help for")
-        print("\nOptions:")
-        print("  --help, -h         Display this help message")
+    # Display usage
+    print(usage)
     
-    print("\nExamples:")
-    if command_name == "create":
-        print('  osyllabi create "Machine Learning" --title "ML Fundamentals" --level Beginner')
-        print('  osyllabi create "Python Programming" --links "https://docs.python.org" --format pdf')
-    elif command_name == "clean":
-        print('  osyllabi clean --all')
-        print('  osyllabi clean --output-dir "./output" --force')
-    elif command_name == "help":
-        print('  osyllabi help')
-        print('  osyllabi help create')
+    # Display options if available
+    if options:
+        print("\nOptions:" if not command_name == "help" else "\nArguments:")
+        # Calculate max length for right-aligned formatting
+        max_opt_len = max(len(opt) for opt in options.keys())
+        for opt, desc in options.items():
+            # For multi-line descriptions, handle proper indentation
+            desc_lines = desc.split('\n')
+            print(f"  {opt.ljust(max_opt_len)}    {desc_lines[0]}")
+            for line in desc_lines[1:]:
+                print(f"  {' ' * max_opt_len}    {line}")
+    
+    # Display examples if available
+    if examples:
+        print("\nExamples:")
+        for example in examples:
+            print(f"  {example}")
 
 
 def display_general_help(command_descriptions: Dict[str, str]) -> None:
