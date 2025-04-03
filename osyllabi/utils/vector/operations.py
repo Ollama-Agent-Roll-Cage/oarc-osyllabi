@@ -14,18 +14,11 @@ from sklearn.metrics.pairwise import cosine_similarity as sk_cosine_similarity
 from sklearn.preprocessing import normalize as sk_normalize
 from sklearn.decomposition import PCA
 
-# Try to import FAISS for efficient vector search
-try:
-    import faiss
-    FAISS_AVAILABLE = True
-    # Check if we have GPU support
-    FAISS_GPU_AVAILABLE = hasattr(faiss, 'StandardGpuResources')
-    if FAISS_GPU_AVAILABLE:
-        log.debug("FAISS GPU support is available")
-except ImportError:
-    FAISS_AVAILABLE = False
-    FAISS_GPU_AVAILABLE = False
-    log.debug("FAISS is not available")
+# Import FAISS directly - __init__.py handles GPU acceleration
+import faiss
+
+# Access GPU capability flag from __init__
+from osyllabi.utils.vector import FAISS_GPU_ENABLED
 
 
 def cosine_similarity(vec1: Union[List[float], np.ndarray], 
@@ -205,11 +198,8 @@ def create_faiss_index(vectors: List[List[float]], use_gpu: bool = True) -> Any:
         FAISS index object or None if FAISS is not available
         
     Raises:
-        ValueError: If FAISS is not available or vectors format is invalid
+        ValueError: If vectors format is invalid
     """
-    if not FAISS_AVAILABLE:
-        raise ValueError("FAISS is not available. Install with 'pip install faiss-cpu' or 'pip install faiss-gpu'")
-    
     if not vectors:
         raise ValueError("No vectors provided to index")
         
@@ -223,16 +213,12 @@ def create_faiss_index(vectors: List[List[float]], use_gpu: bool = True) -> Any:
     index = faiss.IndexFlatL2(d)
     
     # Use GPU if requested and available
-    if use_gpu and FAISS_GPU_AVAILABLE:
-        try:
-            res = faiss.StandardGpuResources()
-            index = faiss.index_cpu_to_gpu(res, 0, index)
-            log.debug("Using GPU-accelerated FAISS index")
-        except Exception as e:
-            log.warning(f"GPU acceleration requested but failed: {e}. Falling back to CPU.")
-    else:
-        if use_gpu and not FAISS_GPU_AVAILABLE:
-            log.debug("GPU acceleration requested but FAISS GPU support not available")
+    if use_gpu and FAISS_GPU_ENABLED:
+        res = faiss.StandardGpuResources()
+        index = faiss.index_cpu_to_gpu(res, 0, index)
+        log.info("Using GPU-accelerated FAISS index")
+    elif use_gpu and not FAISS_GPU_ENABLED:
+            raise RuntimeError("GPU acceleration requested but FAISS GPU support not available")
     
     # Add vectors to the index
     index.add(np_vectors)
@@ -251,13 +237,7 @@ def faiss_search(index: Any, query_vector: List[float], k: int = 5) -> Tuple[Lis
         
     Returns:
         Tuple of (distances, indices)
-        
-    Raises:
-        ValueError: If FAISS is not available
     """
-    if not FAISS_AVAILABLE:
-        raise ValueError("FAISS is not available. Install with 'pip install faiss-cpu' or 'pip install faiss-gpu'")
-    
     # Convert query to numpy array
     q_vec = np.array([query_vector], dtype=np.float32)
     

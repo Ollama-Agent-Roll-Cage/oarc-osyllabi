@@ -2,58 +2,89 @@
 Text chunking for RAG capabilities in Osyllabi.
 
 This module provides functionality for splitting text into chunks
-suitable for embedding and retrieval in the RAG system, using
-LangChain's text splitters for optimal results.
+suitable for embedding and retrieval in the RAG system.
 """
-from typing import List, Dict, Any, Optional, Union
+import re
 import importlib.util
+from typing import List, Dict, Any
+from dataclasses import dataclass
 
 from osyllabi.utils.log import log
 
 
+@dataclass
+class ChunkMetadata:
+    """Metadata for a text chunk."""
+    index: int  # Position in the original document
+    source_text: str  # Source of the chunk
+    char_start: int  # Starting character index in original text
+    char_end: int  # Ending character index in original text
+    is_paragraph_boundary: bool = False  # Whether this chunk starts at a paragraph boundary
+
+
 class TextChunker:
     """
-    Split text into chunks for embedding using LangChain.
+    Split text into chunks for embedding and retrieval.
     
     This class provides functionality to divide documents into
     smaller, overlapping chunks suitable for vector embedding.
     """
     
-    def __init__(self, chunk_size: int = 512, overlap: int = 50):
+    def __init__(
+        self,
+        chunk_size: int = 512,
+        overlap: int = 50,
+        respect_paragraphs: bool = True
+    ):
         """
         Initialize the text chunker.
         
         Args:
             chunk_size: Target size for each chunk (characters)
             overlap: Overlap between consecutive chunks (characters)
+            respect_paragraphs: Try to preserve paragraph boundaries
+            
+        Raises:
+            ImportError: If LangChain is not available
         """
         self.chunk_size = chunk_size
         self.overlap = min(overlap, chunk_size // 2)
+        self.respect_paragraphs = respect_paragraphs
         self.text_splitter = None
+        
+        # Initialize LangChain text splitter - required
         self._initialize_splitter()
         
     def _initialize_splitter(self) -> None:
-        """Initialize the LangChain text splitter or fallback to custom splitting."""
+        """
+        Initialize the LangChain text splitter.
+        
+        Raises:
+            ImportError: If LangChain or its text_splitter module is not available
+        """
         # Check if langchain is available
         langchain_available = importlib.util.find_spec("langchain") is not None
         text_splitters_available = importlib.util.find_spec("langchain.text_splitter") is not None
         
-        if langchain_available and text_splitters_available:
-            try:
-                from langchain.text_splitter import RecursiveCharacterTextSplitter
-                self.text_splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=self.chunk_size,
-                    chunk_overlap=self.overlap,
-                    length_function=len,
-                    separators=["\n\n", "\n", " ", ""]
-                )
-                log.info("Using LangChain's RecursiveCharacterTextSplitter for text chunking")
-            except Exception as e:
-                log.error(f"Failed to initialize LangChain text splitter: {e}")
-                self.text_splitter = None
-        else:
-            log.warning("LangChain not available. Using fallback text chunking.")
-            self.text_splitter = None
+        if not langchain_available or not text_splitters_available:
+            raise ImportError("LangChain is required for text chunking. Please install with 'pip install langchain'")
+            
+        try:
+            from langchain.text_splitter import RecursiveCharacterTextSplitter
+            
+            # Define separators to use for splitting, prioritizing paragraph breaks
+            separators = ["\n\n", "\n", ". ", ", ", " ", ""]
+            
+            self.text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=self.chunk_size,
+                chunk_overlap=self.overlap,
+                length_function=len,
+                separators=separators
+            )
+            log.info("Using LangChain's RecursiveCharacterTextSplitter for text chunking")
+        except Exception as e:
+            log.error(f"Failed to initialize LangChain text splitter: {e}")
+            raise ImportError(f"Failed to initialize LangChain text splitter: {e}")
             
     def chunk_text(self, text: str) -> List[str]:
         """
@@ -64,134 +95,91 @@ class TextChunker:
             
         Returns:
             List of text chunks
+            
+        Raises:
+            RuntimeError: If text chunking fails
         """
         if not text or not text.strip():
             return []
             
-        # Use LangChain if available
-        if self.text_splitter:
-            try:
-                return self.text_splitter.split_text(text)
-            except Exception as e:
-                log.error(f"LangChain text splitting failed: {e}. Falling back to custom chunking.")
-                return self._fallback_chunk_text(text)
-        else:
-            return self._fallback_chunk_text(text)
+        # Clean and normalize the text
+        clean_text = self._clean_text(text)
+        
+        try:
+            chunks = self.text_splitter.split_text(clean_text)
+            log.debug(f"Split text into {len(chunks)} chunks")
+            return chunks
+        except Exception as e:
+            log.error(f"LangChain text splitting failed: {e}")
+            raise RuntimeError(f"Text chunking failed: {e}")
     
-    def _fallback_chunk_text(self, text: str) -> List[str]:
+    def chunk_text_with_metadata(self, text: str) -> List[Dict[str, Any]]:
         """
-        Fallback chunking when LangChain is not available.
+        Split text into overlapping chunks with metadata.
         
         Args:
-            text: Text to chunk
+            text: The text to split into chunks
             
         Returns:
-            List of text chunks
+            List of dictionaries with chunk text and metadata
+            
+        Raises:
+            RuntimeError: If text chunking fails
         """
-        if len(text) < self.chunk_size // 2:
-            return [text]
+        if not text or not text.strip():
+            return []
             
-        # Clean the text
-        cleaned_text = self._clean_text(text)
+        # Clean and normalize the text
+        clean_text = self._clean_text(text)
         
-        # Try to chunk by paragraphs first
-        chunks = self._chunk_by_paragraphs(cleaned_text)
-        
-        # If paragraph chunking yields too few or too large chunks, 
-        # fall back to character-based chunking
-        if not chunks or any(len(chunk) > self.chunk_size * 2 for chunk in chunks):
-            chunks = self._chunk_by_characters(cleaned_text)
+        try:
+            # Use LangChain for basic chunking
+            chunks = self.text_splitter.split_text(clean_text)
             
-        return chunks
+            # Add metadata to each chunk
+            result = []
+            for i, chunk in enumerate(chunks):
+                # Find position in original text (approximate)
+                start_pos = clean_text.find(chunk[:min(50, len(chunk))])
+                if start_pos == -1:
+                    start_pos = 0
+                end_pos = start_pos + len(chunk)
+                
+                # Check if this is a paragraph boundary
+                is_paragraph = False
+                if start_pos > 0 and clean_text[start_pos-1:start_pos+1].count('\n') >= 1:
+                    is_paragraph = True
+                
+                result.append({
+                    "text": chunk,
+                    "metadata": ChunkMetadata(
+                        index=i,
+                        source_text=text[:50] + "..." if len(text) > 50 else text,
+                        char_start=start_pos,
+                        char_end=end_pos,
+                        is_paragraph_boundary=is_paragraph
+                    )
+                })
+                
+            log.debug(f"Split text into {len(result)} chunks with metadata")
+            return result
+            
+        except Exception as e:
+            log.error(f"Text chunking with metadata failed: {e}")
+            raise RuntimeError(f"Text chunking failed: {e}")
     
     def _clean_text(self, text: str) -> str:
         """Clean and normalize text before chunking."""
-        import re
-        # Normalize whitespace
-        text = re.sub(r'\s+', ' ', text).strip()
+        # Replace multiple newlines with just two (for paragraph separation)
+        text = re.sub(r'\n{3,}', '\n\n', text)
         
-        # Replace Unicode quotes with ASCII quotes
-        text = text.replace('"', '"').replace('"', '"')
-        text = text.replace('’', "'").replace('’', "'")
+        # Replace tabs with spaces
+        text = text.replace('\t', ' ')
         
-        return text
-    
-    def _chunk_by_paragraphs(self, text: str) -> List[str]:
-        """Split text into chunks by paragraphs."""
-        import re
-        # Split by paragraph breaks
-        paragraphs = re.split(r'\n\s*\n', text)
-        paragraphs = [p.strip() for p in paragraphs if p.strip()]
+        # Normalize whitespace (no consecutive spaces)
+        text = re.sub(r' {2,}', ' ', text)
         
-        if not paragraphs:
-            return []
-            
-        chunks = []
-        current_chunk = []
-        current_length = 0
-        
-        for paragraph in paragraphs:
-            # If adding this paragraph would exceed the chunk size,
-            # finish the current chunk
-            if current_length + len(paragraph) > self.chunk_size and current_length > 0:
-                chunks.append(' '.join(current_chunk))
-                
-                # Start new chunk, potentially overlapping with the end of the previous chunk
-                overlap_paragraphs = []
-                overlap_length = 0
-                
-                # Add paragraphs from the end until we reach the desired overlap
-                for p in reversed(current_chunk):
-                    if overlap_length + len(p) <= self.overlap:
-                        overlap_paragraphs.insert(0, p)
-                        overlap_length += len(p) + 1  # +1 for the space
-                    else:
-                        break
-                        
-                current_chunk = overlap_paragraphs
-                current_length = overlap_length
-            
-            current_chunk.append(paragraph)
-            current_length += len(paragraph) + 1  # +1 for the space
-        
-        # Add the last chunk if not empty
-        if current_chunk:
-            chunks.append(' '.join(current_chunk))
-            
-        return chunks
-    
-    def _chunk_by_characters(self, text: str) -> List[str]:
-        """Split text into chunks by characters with overlap."""
-        chunks = []
-        start = 0
-        
-        while start < len(text):
-            # Calculate end position
-            end = start + self.chunk_size
-            
-            # Adjust end to avoid splitting words
-            if end < len(text):
-                # Look for a space to break at
-                while end > start and text[end] != ' ':
-                    end -= 1
-                    
-                # If no space found, just break at chunk_size
-                if end == start:
-                    end = start + self.chunk_size
-            else:
-                end = len(text)
-                
-            # Extract the chunk
-            chunk = text[start:end].strip()
-            if chunk:
-                chunks.append(chunk)
-                
-            # Move the start position with overlap
-            start = end - self.overlap
-            if start < 0:
-                start = 0
-        
-        return chunks
+        return text.strip()
     
     def count_tokens(self, text: str) -> int:
         """
@@ -202,13 +190,13 @@ class TextChunker:
             
         Returns:
             Estimated token count
+            
+        Raises:
+            ImportError: If tiktoken is not available
         """
-        # Try to use tiktoken if available for accurate counting
         try:
             import tiktoken
             encoding = tiktoken.get_encoding("cl100k_base")  # Default for many models
             return len(encoding.encode(text))
         except ImportError:
-            # Simple approximation: count words and punctuation
-            import re
-            return len(re.findall(r'\w+|[^\w\s]', text))
+            raise ImportError("tiktoken is required for token counting. Please install with 'pip install tiktoken'")

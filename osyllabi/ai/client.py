@@ -6,6 +6,7 @@ import requests
 from typing import Dict, Any, Optional, List, Union, Generator
 
 from osyllabi.utils.log import log
+from osyllabi.utils.utils import check_for_ollama
 from osyllabi.utils.decorators.singleton import singleton
 from osyllabi.utils.decorators.retry import retry
 
@@ -26,14 +27,17 @@ class OllamaClient:
         Args:
             base_url: Base URL for the Ollama API
             default_model: Default model to use for requests
+            
+        Raises:
+            RuntimeError: If Ollama server is not available
         """
+        # Verify Ollama is available - raise error if not
+        check_for_ollama(raise_error=True)
+        
         self.base_url = base_url.rstrip('/')
         self.default_model = default_model
         log.info(f"Initialized Ollama client with base URL: {base_url}")
-        
-        # Verify the server is accessible
-        self._verify_server()
-    
+
     def _verify_server(self) -> bool:
         """
         Verify that the Ollama server is running and accessible.

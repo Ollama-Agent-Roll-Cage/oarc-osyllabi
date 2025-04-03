@@ -8,10 +8,12 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Optional, Union, Tuple
 
-from osyllabi.utils.log import log, with_context
+from osyllabi.utils.log import log, with_context, is_debug_mode
+from osyllabi.utils.utils import check_for_ollama
 from osyllabi.utils.const import SUCCESS, FAILURE
 from osyllabi.utils.paths import get_output_directory, create_unique_file_path
 from osyllabi.utils.decorators.factory import factory
+from osyllabi.generator.workflow import CurriculumWorkflow
 
 
 @factory
@@ -40,6 +42,7 @@ class Curriculum:
             
         Raises:
             ValueError: If topic is empty or only whitespace and args is not provided
+            RuntimeError: If Ollama is not available for advanced generation
         """
         # Store initialization result to be returned by factory
         self._result = None
@@ -73,7 +76,7 @@ class Curriculum:
         Returns:
             Tuple containing (exit_code, output_path)
         """
-        topic = args.topic.strip()
+        topic = args.topic.strip() if args.topic else ""
         if not topic:
             log.error("Error: Topic is required and cannot be empty")
             log.error(f"Run 'osyllabi create --help' for more information.")
@@ -90,7 +93,16 @@ class Curriculum:
             self.content = ""
             self.created_at = datetime.now()
             
-            self.generate_content()
+            # Verify Ollama is available - will raise RuntimeError if not
+            check_for_ollama()
+            
+            # Use advanced generation with Ollama
+            log.info("Using Ollama for curriculum generation")
+            workflow = CurriculumWorkflow(
+                topic=self.topic,
+                skill_level=self.skill_level
+            )
+            self.content = workflow.generate_full_curriculum(self.links, self.source)
             
             if args.export_path:
                 export_path = args.export_path
@@ -103,8 +115,15 @@ class Curriculum:
             log.info(f"Curriculum exported to {result_path}")
             return SUCCESS, result_path
             
+        except RuntimeError as e:
+            log.error(f"Error: {e}")
+            return FAILURE, None
         except Exception as e:
-            raise RuntimeError(f"Error creating curriculum: {e}")
+            log.error(f"Unexpected error creating curriculum: {e}")
+            if is_debug_mode():
+                import traceback
+                traceback.print_exc()
+            return FAILURE, None
         
     def generate_content(self) -> None:
         """Generate the content for the curriculum."""

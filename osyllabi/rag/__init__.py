@@ -12,7 +12,7 @@ from osyllabi.rag.chunking import TextChunker
 from osyllabi.rag.context import ContextAssembler
 from osyllabi.rag.query import QueryFormulator
 from osyllabi.rag.monitor import RAGMonitor
-from osyllabi.rag.agent import RAGEnhancedAgent
+from osyllabi.rag.rag_agent import RAGAgent
 
 __all__ = [
     "RAGEngine", 
@@ -22,5 +22,5 @@ __all__ = [
     "ContextAssembler",
     "QueryFormulator",
     "RAGMonitor",
-    "RAGEnhancedAgent"
+    "RAGAgent"
 ]

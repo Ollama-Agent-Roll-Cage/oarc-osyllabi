@@ -392,3 +392,37 @@ def check_faiss_gpu_capability() -> bool:
     except ImportError:
         return False
 
+
+def check_for_ollama() -> bool:
+    """
+    Check if Ollama server is available and responding.
+    
+    Returns:
+        bool: True if Ollama is available
+        
+    Raises:
+        RuntimeError: If Ollama is not available
+    """
+    import requests
+    from urllib.parse import urljoin
+    
+    base_url = "http://localhost:11434"
+    
+    try:
+        # Try to connect to Ollama API
+        response = requests.get(base_url, timeout=5)
+        if response.status_code == 200:
+            return True
+            
+        raise RuntimeError(
+            "Ollama server is not available or returned an unexpected response. "
+            "Please ensure Ollama is installed, running, and responding correctly. "
+            "Visit https://ollama.ai/download for installation instructions."
+        )
+    except requests.RequestException as e:
+        raise RuntimeError(
+            f"Failed to connect to Ollama server at {base_url}: {e}. "
+            "Please ensure Ollama is installed and running. "
+            "Visit https://ollama.ai/download for installation instructions."
+        )
+

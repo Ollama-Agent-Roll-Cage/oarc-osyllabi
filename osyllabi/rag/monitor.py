@@ -222,3 +222,28 @@ class RAGMonitor:
                 }, f, indent=2)
         except Exception as e:
             log.error(f"Failed to save metrics: {e}")
+            
+    def reset(self) -> None:
+        """Reset all metrics and history."""
+        self.metrics = {
+            "retrieval": {
+                "count": 0,
+                "total_time": 0.0,
+                "chunk_count": 0,
+                "hit_count": 0
+            },
+            "embedding": {
+                "count": 0,
+                "total_time": 0.0,
+                "chunk_count": 0
+            },
+            "documents": {
+                "count": 0,
+                "total_chunks": 0
+            }
+        }
+        self.query_history = []
+        
+        # Save empty metrics if log path is set
+        if self.log_path and self.log_path.exists():
+            self._save_metrics()

@@ -7,7 +7,8 @@ from osyllabi.utils.utils import (
     safe_to_int, safe_to_float,
     find_files_by_extensions, get_app_dirs, get_system_info,
     retry, get_timestamp, sanitize_filename, 
-    detect_gpu, upgrade_faiss_to_gpu, check_faiss_gpu_capability
+    detect_gpu, upgrade_faiss_to_gpu, check_faiss_gpu_capability,
+    check_for_ollama,
 )
 from osyllabi.utils.paths import (
     ensure_directory, get_project_root, get_temp_directory,
@@ -25,6 +26,7 @@ __all__ = [
     "find_files_by_extensions", "get_app_dirs", "get_system_info",
     "retry", "get_timestamp", "sanitize_filename",
     "detect_gpu", "upgrade_faiss_to_gpu", "check_faiss_gpu_capability",
+    "check_for_ollama",
     
     # Path utilities
     "ensure_directory", "get_project_root", "get_temp_directory",
