@@ -251,3 +251,93 @@ class OllamaClient:
         except requests.RequestException as e:
             log.error(f"Failed to list models: {e}")
             raise RuntimeError(f"Failed to list models: {e}")
+
+    @retry(attempts=3, delay=1, backoff=2, exceptions=(requests.RequestException,))
+    def embed(
+        self,
+        text: str,
+        model: Optional[str] = None
+    ) -> List[float]:
+        """
+        Generate embedding for text using Ollama's embedding API.
+        
+        Args:
+            text: The text to embed
+            model: Model to use for embedding (defaults to client's default_model)
+            
+        Returns:
+            List[float]: The embedding vector
+            
+        Raises:
+            ValueError: If the text is empty
+            RuntimeError: On API errors
+        """
+        if not text:
+            raise ValueError("Text cannot be empty")
+            
+        model_name = model or self.default_model
+        
+        # Build request payload
+        payload = {
+            "model": model_name,
+            "prompt": text
+        }
+            
+        endpoint = f"{self.base_url}/api/embeddings"
+        
+        log.debug(f"Sending embedding request to {endpoint} using model {model_name}")
+        
+        try:
+            response = requests.post(endpoint, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            
+            # Extract the embedding from the response
+            embedding = result.get("embedding", [])
+            if not embedding:
+                log.warning("Received empty embedding from Ollama API")
+                
+            return embedding
+                
+        except requests.RequestException as e:
+            log.error(f"Embedding API request failed: {e}")
+            raise RuntimeError(f"Failed to generate embedding: {e}")
+            
+    @retry(attempts=3, delay=1, backoff=2, exceptions=(requests.RequestException,))
+    def embed_batch(
+        self,
+        texts: List[str],
+        model: Optional[str] = None
+    ) -> List[List[float]]:
+        """
+        Generate embeddings for multiple texts using Ollama's embedding API.
+        
+        Args:
+            texts: List of texts to embed
+            model: Model to use for embedding (defaults to client's default_model)
+            
+        Returns:
+            List[List[float]]: List of embedding vectors
+            
+        Raises:
+            ValueError: If texts list is empty
+            RuntimeError: On API errors
+        """
+        if not texts:
+            return []
+            
+        # Process texts one by one since Ollama API doesn't support batch embedding
+        embeddings = []
+        for text in texts:
+            try:
+                embedding = self.embed(text, model=model)
+                embeddings.append(embedding)
+            except Exception as e:
+                log.error(f"Failed to embed text: {e}")
+                # Use a zero vector as fallback
+                dimension = 4096  # Default dimension for Ollama embeddings
+                if embeddings and len(embeddings[0]) > 0:
+                    dimension = len(embeddings[0])
+                embeddings.append([0.0] * dimension)
+                
+        return embeddings

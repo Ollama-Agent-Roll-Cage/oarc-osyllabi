@@ -25,6 +25,16 @@ SEARCH_CONFIG = {
     'search_depth': int(os.getenv('OSYLLABUS_SEARCH_DEPTH', '2')),
 }
 
+# RAG Configuration
+RAG_CONFIG = {
+    'embedding_model': os.getenv('OSYLLABUS_EMBEDDING_MODEL', 'all-MiniLM-L6-v2'),
+    'chunk_size': int(os.getenv('OSYLLABUS_CHUNK_SIZE', '512')),
+    'chunk_overlap': int(os.getenv('OSYLLABUS_CHUNK_OVERLAP', '50')),
+    'retrieval_top_k': int(os.getenv('OSYLLABUS_RETRIEVAL_TOP_K', '5')),
+    'similarity_threshold': float(os.getenv('OSYLLABUS_SIMILARITY_THRESHOLD', '0.7')),
+    'enable_rag': os.getenv('OSYLLABUS_ENABLE_RAG', 'true').lower() in ('true', 'yes', '1')
+}
+
 # Supported file types for sources
 SUPPORTED_FILE_EXTENSIONS = [
     '.txt', '.md', '.tex', '.rst', '.html',

@@ -25,11 +25,16 @@ classifiers = [
 ]
 
 dependencies = [
+    # Core dependencies
     "PyQt6>=6.5.0",
     "requests>=2.28.0",
     "beautifulsoup4>=4.11.0",
     "ollama>=0.4.7",
-    "asyncio>=3.4.3"
+    "asyncio>=3.4.3",
+    "numpy>=2.2.4",
+    
+    # Machine learning dependencies
+    "scikit-learn>=1.4.0",
 ]
 
 [project.optional-dependencies]
@@ -38,6 +43,22 @@ dev = [
     "flake8>=6.0.0",
     "black>=23.0.0",
     "mypy>=1.0.0",
+]
+
+gpu = [
+    "faiss-gpu>=1.7.0",
+]
+
+cpu = [
+    "faiss-cpu>=1.7.0",
+]
+
+full = [
+    "faiss-cpu>=1.7.0",
+    "sentence-transformers>=2.2.2",
+    "pymupdf>=1.23.0",      # For PDF processing
+    "python-docx>=1.0.0",   # For DOCX processing
+    "markdown>=3.5.0",       # For markdown processing
 ]
 
 [project.urls]
