@@ -3,9 +3,10 @@ Curriculum generation functionality.
 """
 import json
 import argparse
-from typing import List, Optional, Union, Tuple
+
 from pathlib import Path
 from datetime import datetime
+from typing import List, Optional, Union, Tuple
 
 from osyllabi.utils.log import log, with_context
 from osyllabi.utils.const import SUCCESS, FAILURE
