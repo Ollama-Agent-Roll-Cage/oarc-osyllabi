@@ -69,11 +69,11 @@ class CurriculumWorkflow:
         # Initialize resource collection manager
         self.resource_manager = ResourceCollectionManager()
         
-        # Templates for different curriculum sections
+        # Templates for different curriculum sections - use the exact preset names from PromptTemplate
         self.templates = {
-            "overview": PromptTemplate.from_preset("curriculum_overview"),
+            "overview": PromptTemplate.from_preset("overview"),
             "learning_path": PromptTemplate.from_preset("learning_path"),
-            "resources": PromptTemplate.from_preset("resources_section"),
+            "resources": PromptTemplate.from_preset("resources"),
             "projects": PromptTemplate.from_preset("projects")
         }
         

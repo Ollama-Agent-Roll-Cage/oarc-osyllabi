@@ -1,9 +1,6 @@
 # Osyllabi
 
-![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
-![License](https://img.shields.io/badge/license-Apache%202.0-green)
-
-Osyllabi is a streamlined Python app for designing personalized curriculums using AI, web crawling, and data integration.
+A streamlined Python app for designing personalized curriculums using AI, web crawling, and data integration.
 
 ## Features
 
@@ -17,8 +14,8 @@ Osyllabi is a streamlined Python app for designing personalized curriculums usin
 
 ```bash
 # Clone the repository
-git clone https://github.com/p3nGu1nZz/Osyllabi.git
-cd Osyllabi
+git clone https://github.com/p3nGu1nZz/osyllabi.git
+cd osyllabi
 
 # Create and use virtual environment (recommended)
 python -m venv .venv
@@ -28,45 +25,65 @@ python -m venv .venv
 pip install -e .
 ```
 
+## Requirements
+
+- Python 3.12 or higher
+- [Ollama](https://ollama.ai/download) running locally (required for AI operations)
+
 ## Usage
 
 ### Command Line
 
-```ps
-osyllabus create \
-    --topic "Machine Learning" \
-    --title "Learn how to use Osyllabi" \
+```bash
+# Create a curriculum with basic options
+osyllabi create "Machine Learning" --format md
+
+# Create with detailed options
+osyllabi create "Machine Learning" \
+    --title "ML Fundamentals" \
     --level "Beginner" \
     --links "https://www.wikipedia.org/" \
-    --source "."
+    --source ./docs/ \
+    --format "json"
+
+# Show help
+osyllabi help create
+
+# Clean up generated files
+osyllabi clean --all
 ```
 
-### Python
+### Python API
 
 ```python
-# Example of how to use Osyllabus for basic curriculum generation
-from osyllabi import CurriculumGenerator
+from osyllabi import Curriculum
 
-# Initialize the generator with topic and skill level
-generator = CurriculumGenerator(
+# Create a curriculum
+curriculum = Curriculum(
     topic="Machine Learning",
-    title="Learn how to use Osyllabi", 
-    level="Beginner", 
+    title="ML Fundamentals", 
+    skill_level="Beginner", 
     links=["https://www.wikipedia.org/"],
-    source=["."]) # project root    
+    source=["./docs/"]
+)
 
-# Generate a personalized curriculum
-curriculum = generator.create()
+# Generate content
+curriculum.generate_content()
 
 # Export the curriculum
-curriculum.export(".\docs")
+curriculum.export("./output/ml_curriculum.md")
 ```
 
-For more detailed examples, see the [examples](examples/) directory.
+## Customizing Templates
 
-## Contributing
+Osyllabi uses a template system for generating different parts of the curriculum. The default templates are provided for:
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- **Overview**: Introduction and learning objectives
+- **Learning Path**: Structured progression of modules
+- **Resources**: Curated learning materials
+- **Projects**: Practical exercises and projects
+
+You can customize these templates by modifying the `PromptTemplate` class constants in `osyllabi/ai/prompts.py` before installation.
 
 ## License
 

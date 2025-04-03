@@ -32,6 +32,7 @@ dependencies = [
     "ollama>=0.4.7",     # Required - Ollama API client library
     "asyncio>=3.4.3",    # Required for asynchronous operations
     "numpy>=2.2.4",      # Required for vector operations
+    "pandas>=2.2.3",      # Required for data manipulation and analysis
     
     # Web and document processing
     "beautifulsoup4>=4.11.0",  # Required for HTML parsing and extraction
