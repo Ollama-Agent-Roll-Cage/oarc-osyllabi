@@ -16,7 +16,15 @@ class CleanCommand(Command):
         """Register command-specific arguments to the parser."""
         setup_clean_arguments(parser)
     
-    def execute(self) -> int:
-        """Execute the command and return the exit code."""
+    def execute(self, args: argparse.Namespace) -> int:
+        """
+        Execute the command and return the exit code.
+        
+        Args:
+            args: Command-line arguments
+            
+        Returns:
+            int: Exit code
+        """
         # Delegate to clean utility with parsed arguments
-        return clean_from_args(self.args)
+        return clean_from_args(args)

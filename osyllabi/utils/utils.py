@@ -129,7 +129,7 @@ def get_app_dirs() -> Dict[str, Path]:
 
 def get_system_info() -> Dict[str, str]:
     """
-    Get system information for diagnostics.
+    Get system information for diagnostics.d
     
     Returns:
         Dict[str, str]: System information
@@ -393,15 +393,18 @@ def check_faiss_gpu_capability() -> bool:
         return False
 
 
-def check_for_ollama() -> bool:
+def check_for_ollama(raise_error: bool = True) -> bool:
     """
     Check if Ollama server is available and responding.
+    
+    Args:
+        raise_error: Whether to raise an error if Ollama is not available
     
     Returns:
         bool: True if Ollama is available
         
     Raises:
-        RuntimeError: If Ollama is not available
+        RuntimeError: If Ollama is not available and raise_error is True
     """
     import requests
     from urllib.parse import urljoin
@@ -413,16 +416,22 @@ def check_for_ollama() -> bool:
         response = requests.get(base_url, timeout=5)
         if response.status_code == 200:
             return True
-            
-        raise RuntimeError(
+        
+        error_msg = (
             "Ollama server is not available or returned an unexpected response. "
             "Please ensure Ollama is installed, running, and responding correctly. "
             "Visit https://ollama.ai/download for installation instructions."
         )
+        if raise_error:
+            raise RuntimeError(error_msg)
+        return False
     except requests.RequestException as e:
-        raise RuntimeError(
+        error_msg = (
             f"Failed to connect to Ollama server at {base_url}: {e}. "
             "Please ensure Ollama is installed and running. "
             "Visit https://ollama.ai/download for installation instructions."
         )
+        if raise_error:
+            raise RuntimeError(error_msg)
+        return False
 

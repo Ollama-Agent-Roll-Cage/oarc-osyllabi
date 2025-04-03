@@ -1,9 +1,12 @@
 """
-Help utilities for CLI commands.
+Help information display for CLI commands.
 """
 import sys
 import textwrap
-from typing import Dict, Optional, List, Tuple
+from typing import Optional, Dict, List, Tuple
+
+from osyllabi.utils.cli.cmd_descriptions import COMMAND_DESCRIPTIONS
+from osyllabi.utils.cli.cmd_types import CommandType
 
 from osyllabi.utils.log import log
 
@@ -155,7 +158,6 @@ def display_help_for_unknown_command(attempted_command: str) -> None:
     log.warning(f"Unknown command requested: '{attempted_command}'")
 
 
-
 def show_help(command: Optional[str] = None) -> None:
     """
     Display help information for commands.
@@ -163,8 +165,6 @@ def show_help(command: Optional[str] = None) -> None:
     Args:
         command: Specific command to show help for, or None for general help
     """
-    from osyllabi.utils.cli.router import COMMAND_DESCRIPTIONS
-    
     if command:
         display_command_help(command, COMMAND_DESCRIPTIONS)
     else:

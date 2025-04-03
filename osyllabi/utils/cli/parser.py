@@ -5,7 +5,7 @@ import argparse
 import sys
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 from osyllabi.config import EXPORT_FORMATS, DEFAULT_EXPORT_FORMAT
 from osyllabi.utils.cli.help import show_help
@@ -178,7 +178,16 @@ def setup_clean_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def parse_args(args: Optional[List[str]] = None):
+def setup_help_arguments(parser: argparse.ArgumentParser) -> None:
+    """Set up arguments for the help command."""
+    parser.add_argument(
+        "subcommand",
+        nargs="?",
+        help="Command to get help for"
+    )
+
+
+def parse_args(args: Optional[List[str]] = None) -> Union[argparse.Namespace, Tuple[bool, Optional[str]]]:
     """
     Parse command line arguments.
     
@@ -186,19 +195,29 @@ def parse_args(args: Optional[List[str]] = None):
         args: Command line arguments to parse, defaults to sys.argv[1:]
         
     Returns:
-        argparse.Namespace: Parsed arguments
+        Either parsed arguments or a tuple indicating help was requested
     """
+    if args is None:
+        args = sys.argv[1:]
+        
+    # Check for global help flags first (as a special case)
+    if not args or args[0] in ['-h', '--help']:
+        return (True, None)  # Help requested with no specific command
+        
     parser = setup_parser()
     
     try:
         parsed_args = parser.parse_args(args)
         
-        # If help is requested for a subcommand, we want to handle it ourselves
-        if parsed_args.help_requested and parsed_args.command:
-            return parsed_args
+        # If help is requested for a command, we want to handle it
+        if hasattr(parsed_args, 'help_requested') and parsed_args.help_requested:
+            return (True, parsed_args.command)
             
         return parsed_args
     except SystemExit as e:
-        # On parse error or help request, show help and then exit with appropriate code
-        show_help(None if not args else args[0] if args and args[0] not in ['-h', '--help'] and not args[0].startswith('-') else None)
-        sys.exit(e.code)
+        # On parse error, check if it looks like a help request
+        cmd = None
+        if args and args[0] not in ['-h', '--help'] and not args[0].startswith('-'):
+            cmd = args[0]
+            
+        return (True, cmd)

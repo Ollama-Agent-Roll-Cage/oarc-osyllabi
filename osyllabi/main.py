@@ -6,7 +6,7 @@ import sys
 from typing import Optional, List
 
 from osyllabi.utils.log import is_debug_mode
-from osyllabi.utils.cli.router import handle
+from osyllabi.utils.cli.router import route_command
 
 
 def main(args: Optional[List[str]] = None) -> int:
@@ -20,7 +20,17 @@ def main(args: Optional[List[str]] = None) -> int:
         int: Exit code
     """
     try:
-        return handle(args)   # Handle CLI commands
+        # Use the route_command function directly
+        exit_code = route_command(args)
+        return exit_code
+    except RuntimeError as e:
+        if "Ollama" in str(e):
+            print(f"Error: {e}")
+            print("Osyllabi requires Ollama to be installed and running.")
+            print("Please visit https://ollama.ai/download for installation instructions.")
+        else:
+            print(f"Runtime error: {e}")
+        return 1
     except KeyboardInterrupt: # Handle Ctrl+C gracefully
         print("\nCancelled by user.", file=sys.stderr)
         return 130            # Standard exit code for SIGINT

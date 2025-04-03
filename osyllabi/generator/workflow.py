@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
 
 from osyllabi.utils.log import log
+from osyllabi.utils.utils import check_for_ollama
 from osyllabi.ai.client import OllamaClient
 from osyllabi.ai.prompts import PromptTemplate
 from osyllabi.generator.resources import ResourceCollectionManager
@@ -43,9 +44,15 @@ class CurriculumWorkflow:
             model: Model to use for generation
             temperature: Temperature for generation
             use_langchain: Whether to use LangChain for enhanced processing if available
+            
+        Raises:
+            RuntimeError: If Ollama is not available
         """
         self.topic = topic
         self.skill_level = skill_level
+        
+        # Verify Ollama is available
+        check_for_ollama(raise_error=True)
         
         # Initialize the AI client
         self.client = client or OllamaClient()

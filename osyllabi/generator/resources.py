@@ -163,3 +163,6 @@ class ResourceCollectionManager:
             Dictionary of statistics
         """
         return self.manager.get_stats()
+
+# Make sure we export ResourceCollectionManager
+__all__ = ['ResourceCollectionManager']

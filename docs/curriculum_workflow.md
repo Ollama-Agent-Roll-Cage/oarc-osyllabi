@@ -17,8 +17,8 @@ flowchart TD
     PrepDir --> E{Ollama Available?}
     
     E -->|Yes| F[CurriculumWorkflow]
-    E -->|No| G[Simple Template Generation]
-    G --> J[Export Curriculum]
+    E -->|No| Error[RuntimeError: Ollama Required]
+    Error --> Exit[Exit with Error Code]
     
     %% AI Integration
     F --> H[OllamaClient]
@@ -83,7 +83,7 @@ flowchart TD
     K4 --> L
     
     %% Export
-    L --> J
+    L --> J[Export Curriculum]
     J --> M1[Markdown]
     J --> M2[JSON]
     J --> M3[PDF/HTML/etc]
@@ -113,7 +113,7 @@ The `Curriculum` class serves as the primary entry point, which:
 
 1. Generates a unique run ID based on timestamp
 2. Creates directory structure for outputs and artifacts
-3. Checks for Ollama availability
+3. **Verifies Ollama availability** (required - will raise RuntimeError if not available)
 4. Delegates content generation to `CurriculumWorkflow`
 5. Handles exporting to various formats (Markdown, JSON, etc.)
 

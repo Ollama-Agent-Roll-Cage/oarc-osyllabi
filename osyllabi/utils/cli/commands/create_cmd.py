@@ -16,10 +16,18 @@ class CreateCommand(Command):
         """Register command-specific arguments to the parser."""
         setup_create_arguments(parser)
     
-    def execute(self) -> int:
-        """Execute the command and return the exit code."""
+    def execute(self, args: argparse.Namespace) -> int:
+        """
+        Execute the command and return the exit code.
+        
+        Args:
+            args: Command-line arguments
+            
+        Returns:
+            int: Exit code
+        """
         # Use the factory method from Curriculum to handle creation and export
-        result = Curriculum.create(args=self.args)
+        result = Curriculum.create(args=args)
         
         # For CLI usage, we expect a tuple of (exit_code, path)
         if isinstance(result, tuple) and len(result) == 2:

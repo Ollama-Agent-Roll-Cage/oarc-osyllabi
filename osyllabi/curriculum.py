@@ -42,7 +42,7 @@ class Curriculum:
             
         Raises:
             ValueError: If topic is empty or only whitespace and args is not provided
-            RuntimeError: If Ollama is not available for advanced generation
+            RuntimeError: If Ollama is not available for generation
         """
         # Store initialization result to be returned by factory
         self._result = None
@@ -63,6 +63,9 @@ class Curriculum:
         self.source = source or ["."]
         self.content = ""
         self.created_at = datetime.now()
+        
+        # Verify Ollama is available - will raise RuntimeError if not
+        check_for_ollama(raise_error=True)
         
         log.debug(f"Created new curriculum: {self.title}")
     
@@ -94,7 +97,7 @@ class Curriculum:
             self.created_at = datetime.now()
             
             # Verify Ollama is available - will raise RuntimeError if not
-            check_for_ollama()
+            check_for_ollama(raise_error=True)
             
             # Use advanced generation with Ollama
             log.info("Using Ollama for curriculum generation")
@@ -126,28 +129,24 @@ class Curriculum:
             return FAILURE, None
         
     def generate_content(self) -> None:
-        """Generate the content for the curriculum."""
+        """
+        Generate the content for the curriculum using Ollama.
+        
+        Raises:
+            RuntimeError: If Ollama is not available
+        """
         log.info(f"Generating curriculum content for topic: {self.topic}")
         
+        # Verify Ollama is available
+        check_for_ollama(raise_error=True)
+        
+        # Use workflow for generation
         with with_context(topic=self.topic, skill_level=self.skill_level):
-            self.content = f"""
-# {self.title}
-
-## Overview
-A curriculum for learning about {self.topic} at the {self.skill_level} level.
-
-## Resources
-"""
-            
-            # Add links
-            if self.links:
-                log.debug(f"Adding {len(self.links)} external links to curriculum")
-                self.content += "\n### External Links\n"
-                for link in self.links:
-                    self.content += f"- [{link}]({link})\n"
-            
-            # Add placeholder for content sections that would be filled by more advanced implementation
-            self.content += "\n## Learning Path\n\n*Curriculum content generation in progress...*\n"
+            workflow = CurriculumWorkflow(
+                topic=self.topic,
+                skill_level=self.skill_level
+            )
+            self.content = workflow.generate_full_curriculum(self.links, self.source)
             
             log.info(f"Generated curriculum content: {self.title}")
     

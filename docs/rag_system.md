@@ -1,251 +1,187 @@
 # Retrieval-Augmented Generation (RAG) System
 
-This document explains how Osyllabi uses RAG to enhance curriculum generation by leveraging vector embeddings to retrieve relevant context.
-
-## Architecture Overview
-
-```mermaid
-flowchart TD
-    subgraph ResourceProcessing ["Resource Processing"]
-        Input[Resource Content] --> Chunking[Text Chunker]
-        Chunking --> Embedding[Vector Embedding]
-        Embedding --> Storage[Vector Database]
-    end
-    
-    subgraph QueryProcessing ["Query Processing"] 
-        Query[Agent Query] --> QueryForm[Query Formulator]
-        QueryForm --> QueryEmbed[Embed Query]
-        QueryEmbed --> VectorSearch[Vector Search]
-        Storage --> VectorSearch
-        VectorSearch --> Ranking[Similarity Ranking]
-        Ranking --> ContextAssembly[Context Assembly]
-    end
-    
-    subgraph Integration ["Prompt Integration"]
-        ContextAssembly --> Prompt[Augmented Prompt]
-        Prompt --> LLM[AI Generation]
-        LLM --> Output[Enhanced Content]
-    end
-    
-    subgraph Optimization ["System Optimization"]
-        direction TB
-        
-        GPU{GPU Available?} -->|Yes| FGPU[FAISS-GPU]
-        GPU -->|No| FCPU[FAISS-CPU]
-        
-        subgraph Monitoring ["System Monitoring"]
-            Monitor[RAG Monitor]
-            Stats[(Performance Stats)]
-            Monitor --> Stats
-        end
-        
-        FGPU & FCPU -.-> VectorSearch
-    end
-    
-    subgraph Dependencies ["Required Dependencies"]
-        direction TB
-        Ollama[Ollama API] -.-> Embedding & LLM
-        LangChain[LangChain] -.-> Chunking
-        SQLite[(SQLite)] -.-> Storage
-        FAISS[FAISS] -.-> VectorSearch
-    end
-```
-
-## Required Dependencies
-
-Osyllabi's RAG system has strict dependency requirements:
-
-1. **Ollama**: Mandatory for embedding generation and inferencing
-   - Must be installed and running at system startup
-   - No fallback mechanism - system will exit if unavailable
-   - Visit [Ollama Download Page](https://ollama.ai/download) for installation
-
-2. **LangChain**: Required for text chunking functionality
-   - Used for optimal document segmentation
-   - Installed automatically with Osyllabi
-
-3. **SQLite**: Used for the vector database (included in Python standard library)
-
-4. **FAISS**: Automatically used for efficient vector search when available
-   - CPU version used by default
-   - GPU version used when hardware is available
+Osyllabi implements a sophisticated Retrieval-Augmented Generation (RAG) system to enhance curriculum generation by incorporating relevant information from various sources.
 
 ## System Architecture
 
-The RAG system is composed of several integrated components:
+```mermaid
+flowchart TD
+    subgraph UserInteraction
+        User[User Input]
+        CLI[Command-Line Interface]
+        API[Python API]
+        
+        User --> CLI
+        User --> API
+    end
+    
+    subgraph RAGSystem [RAG System]
+        RAGEngine[RAG Engine]
+        
+        subgraph Embedding
+            EmbGen[Embedding Generator]
+            EmbCache[(Embedding Cache)]
+            OllamaEmb[Ollama API]
+            
+            EmbGen --> EmbCache
+            EmbGen --> OllamaEmb
+        end
+        
+        subgraph Chunking
+            TextChk[Text Chunker]
+            TokenCnt[Token Counter]
+            
+            TextChk --> TokenCnt
+        end
+        
+        subgraph Storage
+            VecDB[(Vector Database)]
+            SQLite[(SQLite Storage)]
+            
+            VecDB --> SQLite
+        end
+        
+        subgraph Retrieval
+            ContAss[Context Assembler]
+            QueryForm[Query Formulator]
+            SubTopic[Subtopic Expander]
+            
+            QueryForm --> SubTopic
+        end
+        
+        RAGEngine --> Embedding
+        RAGEngine --> Chunking
+        RAGEngine --> Storage
+        RAGEngine --> Retrieval
+    end
+    
+    subgraph Resources
+        WebUrls[Web URLs]
+        LocalFiles[Local Files]
+        
+        subgraph WebExtractors
+            HTML[HTML Extractor]
+            JSON[JSON Extractor]
+            Text[Text Extractor]
+        end
+        
+        subgraph FileExtractors
+            Code[Code Parser]
+            Data[Data File Parser]
+            Doc[Document Parser]
+            PDF[PDF Extractor]
+            Markdown[Markdown Parser]
+        end
+        
+        WebUrls --> WebExtractors
+        LocalFiles --> FileExtractors
+    end
+    
+    subgraph AIIntegration
+        Ollama[Ollama]
+        Agents[Agent System]
+        
+        Ollama --> Agents
+    end
+    
+    Resources --> RAGSystem
+    RAGSystem --> AIIntegration
+    AIIntegration --> UserInteraction
+```
 
-### 1. RAG Engine
+## Core Components
 
-The central coordinator for the entire RAG process:
+### RAG Engine
+
+The `RAGEngine` class serves as the central coordinator for the entire RAG system, providing a high-level interface for:
+
+- Adding documents to the knowledge base
+- Retrieving relevant context for queries
+- Managing persistent storage of embeddings and chunks
 
 ```python
 # Initialize RAG engine
 rag_engine = RAGEngine(
-    run_id="curriculum_12345",             # Unique ID for this session
-    embedding_model="llama3",              # Model for embedding generation
-    chunk_size=512,                        # Size of text chunks
-    chunk_overlap=50                       # Overlap between chunks
+    run_id="curriculum_12345",
+    embedding_model="llama3"
 )
 
 # Add documents to knowledge base
-doc_count = rag_engine.add_document(
-    text="Machine learning is a field of study...",
-    metadata={"source": "textbook", "chapter": "introduction"}
+rag_engine.add_document(
+    text="Python is a programming language...",
+    metadata={"source": "documentation"}
 )
 
 # Retrieve relevant context
-context = rag_engine.retrieve(
-    query="How to explain gradient descent to beginners?",
-    top_k=5,                               # Return top 5 most relevant chunks
-    threshold=0.7                          # Minimum similarity threshold
+results = rag_engine.retrieve(
+    query="How to start learning Python?",
+    top_k=5
 )
 ```
 
-### 2. Document Processing Pipeline
+### Content Extractors
 
-The process of converting raw documents into searchable vectors:
+The system includes specialized extractors for different content types:
 
-1. **Text Chunking**: Splits documents into optimal segments
+#### Web Resource Extractors
 
-   ```python
-   chunker = TextChunker(chunk_size=512, overlap=50)
-   chunks = chunker.chunk_text(document_text)
-   ```
+- **HTMLExtractor**: Parses HTML content using BeautifulSoup for improved extraction
+- **JSONExtractor**: Processes JSON responses from APIs and web services
+- **TextExtractor**: Handles plain text resources
 
-2. **Embedding Generation**: Creates vector representations
+#### File Resource Extractors
 
-   ```python
-   embedder = EmbeddingGenerator(model_name="llama3")
-   vectors = embedder.embed_texts(chunks)
-   ```
+- **CodeFileExtractor**: Analyzes source code structure across multiple programming languages
+- **DataFileExtractor**: Processes structured data files (CSV, JSON, YAML)
+- **FileExtractor**: Basic file handling with markdown support
+- **PDFExtractor**: Extracts text content from PDF files using PyMuPDF
+- **DocxExtractor**: Processes Microsoft Word documents using python-docx
 
-3. **Vector Storage**: Persists embeddings for retrieval
+### Document Processing
 
-   ```python
-   vector_db = VectorDatabase("./vectors.db")
-   vector_db.add_document(chunks, vectors, metadata)
-   ```
+The document processing pipeline includes:
 
-### 3. Query Processing Pipeline
+1. **Resource Collection**: Gathering content from URLs and local files
+2. **Content Extraction**: Parsing different file formats with specialized extractors
+3. **Text Chunking**: Breaking content into manageable pieces
+4. **Embedding Generation**: Converting text chunks to vector embeddings
+5. **Vector Storage**: Saving embeddings in the vector database
+6. **Retrieval**: Finding relevant content for prompts
 
-The process of finding relevant context for a query:
+## Vector Operations
 
-1. **Query Formulation**: Creates effective retrieval queries
+The system uses optimized vector operations for similarity search:
 
-   ```python
-   formulator = QueryFormulator()
-   optimized_query = formulator.formulate_query(
-       topic="Machine Learning",
-       query_type="learning_path"
-   )
-   ```
+- **cosine_similarity**: Fast cosine similarity calculation
+- **normalize_vector**: L2 normalization for vectors
+- **batch_cosine_similarity**: Efficient batch similarity operations
+- **FAISS integration**: Approximate nearest neighbor search with optional GPU acceleration
 
-2. **Vector Search**: Finds similar content
+## Enhanced Context Assembly
 
-   ```python
-   query_embedding = embedder.embed_text(optimized_query)
-   results = vector_db.search(
-       query_embedding,
-       top_k=5,
-       threshold=0.7
-   )
-   ```
+The `ContextAssembler` creates high-quality context for prompts:
 
-3. **Context Assembly**: Formats retrieved chunks
+- **Format customization**: Different context formats (simple, detailed, markdown)
+- **Relevance scoring**: Ordering by similarity score
+- **Deduplication**: Removing redundant content
+- **Keyword highlighting**: Emphasizing important terms
+- **Source attribution**: Including source information for retrieved content
 
-   ```python
-   assembler = ContextAssembler(format_style="markdown")
-   formatted_context = assembler.assemble_context(results)
-   ```
+## Query Formulation
 
-### 4. Agent Integration
+The `QueryFormulator` enhances retrieval with:
 
-Agents can leverage RAG to enhance their capabilities:
+- **Domain-specific queries**: Tailoring queries to the subject area
+- **Query expansion**: Including related terms and subtopics
+- **Template-based generation**: Using templates for different query types
+- **Hierarchical queries**: Creating queries at different levels of specificity
 
-```python
-# Create RAG-enhanced agent
-agent = RAGEnhancedAgent("learning_path_agent", rag_engine=rag_engine)
+## Monitoring and Optimization
 
-# Create enhanced prompt with relevant context
-enhanced_prompt = agent.create_enhanced_prompt(
-    base_prompt="Create a learning path for {topic} at {skill_level} level.",
-    topic="Machine Learning",
-    query_type="learning_path",
-    skill_level="Beginner"
-)
+The system includes performance monitoring through `RAGMonitor`:
 
-# Use enhanced prompt for generation
-learning_path = ollama_client.generate(enhanced_prompt)
-```
-
-## Performance Optimization
-
-The system includes multiple optimization strategies:
-
-### Vector Search Acceleration
-
-```python
-# Detect GPU and use FAISS with acceleration
-has_gpu, gpu_info = detect_gpu()
-
-# Create optimized index
-vectors = [doc.embedding for doc in documents]
-index = create_faiss_index(vectors, use_gpu=has_gpu)
-
-# Perform optimized search
-distances, indices = faiss_search(index, query_vector, k=5)
-```
-
-### Performance Monitoring
-
-```python
-# Initialize monitor
-monitor = RAGMonitor(log_path="./rag_metrics.json")
-
-# Record retrieval operations
-retrieval_id = monitor.start_retrieval()
-results = rag_engine.retrieve(query, top_k=5)
-monitor.record_retrieval(retrieval_id, query, results)
-
-# Get performance metrics
-metrics = monitor.get_metrics()
-print(f"Average retrieval time: {metrics['retrieval']['avg_time']:.3f}s")
-print(f"Hit rate: {metrics['retrieval']['hit_rate']*100:.1f}%")
-```
-
-## Configuration Options
-
-System behavior can be customized through environment variables:
-
-```python
-# RAG Configuration
-RAG_CONFIG = {
-    'embedding_model': os.getenv('OSYLLABUS_EMBEDDING_MODEL', 'llama3'),
-    'chunk_size': int(os.getenv('OSYLLABUS_CHUNK_SIZE', '512')),
-    'chunk_overlap': int(os.getenv('OSYLLABUS_CHUNK_OVERLAP', '50')),
-    'retrieval_top_k': int(os.getenv('OSYLLABUS_RETRIEVAL_TOP_K', '5')),
-    'similarity_threshold': float(os.getenv('OSYLLABUS_SIMILARITY_THRESHOLD', '0.7'))
-}
-
-# FAISS Configuration
-FAISS_CONFIG = {
-    'use_gpu': os.getenv('OSYLLABUS_FAISS_USE_GPU', 'true').lower() in ('true', 'yes', '1')
-}
-```
-
-## Error Handling
-
-The RAG system implements comprehensive error handling:
-
-1. **Dependency Verification**: Checks for Ollama at startup
-2. **Graceful Degradation**: Falls back to simpler methods when optimal ones fail
-3. **Detailed Logging**: Records performance metrics and error information
-4. **Retry Mechanisms**: Automatically retries transient failures
-
-## Future Enhancements
-
-1. **Hybrid Search**: Combine vector retrieval with keyword-based filtering
-2. **Multi-source Weighting**: Prioritize trusted sources for particular knowledge domains
-3. **Contextual Feedback**: Incorporate user feedback to improve context quality
-4. **Cross-run Knowledge**: Enable knowledge sharing between curriculum runs
-5. **Advanced Chunking**: Semantically-aware document segmentation
+- **Retrieval metrics**: Tracking hit rates and latency
+- **Embedding performance**: Monitoring embedding generation time
+- **Query history**: Recording recent queries and results
+- **Statistics tracking**: Collecting system-wide performance data
+````
