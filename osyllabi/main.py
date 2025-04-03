@@ -6,5 +6,10 @@ import sys
 from osyllabi.utils.cli.router import handle
 
 
+def main():
+    """Main entry point function for the CLI application."""
+    return handle()
+
+
 if __name__ == "__main__":
-    sys.exit(handle())
+    sys.exit(main())

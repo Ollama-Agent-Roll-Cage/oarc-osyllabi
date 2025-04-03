@@ -2,22 +2,40 @@
 Command router for CLI operations.
 """
 import sys
-from typing import Dict, Type
+from typing import Type
 
 from osyllabi.utils.cli.cmd import Command
 from osyllabi.utils.cli.cmd_types import CommandType
-from osyllabi.utils.cli.commands.create_cmd import CreateCommand
-from osyllabi.utils.cli.commands.clean_cmd import CleanCommand
 from osyllabi.utils.cli.parser import parse_args
-from osyllabi.utils.cli.help import show_help
-from osyllabi.utils.const import SUCCESS, FAILURE
+from osyllabi.utils.cli.help import show_help, is_help_requested, display_help_for_unknown_command
+from osyllabi.utils.const import FAILURE, SUCCESS
 
 
-# Register all available commands
-COMMAND_MAP: Dict[str, Type[Command]] = {
-    CommandType.CREATE.value: CreateCommand,
-    CommandType.CLEAN.value: CleanCommand,
+# Map of command types to their descriptions
+COMMAND_DESCRIPTIONS = {
+    CommandType.HELP.value: "Display help for Osyllabi commands",
+    CommandType.CREATE.value: "Create a new curriculum",
+    CommandType.CLEAN.value: "Clean up generated files and temporary data",
 }
+
+def get_command(command_type: str) -> Type[Command]:
+    """
+    Dynamically import and return the command class.
+    
+    Map of command types to their implementation classes
+    Using lazy loading to avoid import errors when just displaying help
+    """
+    if command_type == CommandType.CREATE.value:
+        from osyllabi.utils.cli.commands.create_cmd import CreateCommand
+        return CreateCommand
+    elif command_type == CommandType.CLEAN.value:
+        from osyllabi.utils.cli.commands.clean_cmd import CleanCommand
+        return CleanCommand
+    elif command_type == CommandType.HELP.value:
+        from osyllabi.utils.cli.commands.help_cmd import HelpCommand
+        return HelpCommand
+    else:
+        raise ValueError(f"Unknown command: {command_type}")
 
 
 def handle() -> int:
@@ -27,20 +45,43 @@ def handle() -> int:
     Returns:
         int: Exit code (0 for success, non-zero for errors)
     """
-    args = parse_args()
-    
-    if not args.command or args.command not in COMMAND_MAP:
-        from osyllabi.utils.cli.parser import setup_parser
-        setup_parser().print_help()
-        show_help(command_map=COMMAND_MAP)
-        return FAILURE
-    
-    cmd_class = COMMAND_MAP[args.command]
-    
-    # Execute the command
     try:
+        # Pre-check if help is requested for simpler handling
+        if is_help_requested(sys.argv[1:]):
+            args = parse_args()
+            
+            # If it's "help <command>"
+            if args.command == 'help' and hasattr(args, 'subcommand') and args.subcommand:
+                show_help(args.subcommand)
+                return SUCCESS
+            
+            # If it's "<command> --help"
+            elif hasattr(args, 'command') and args.command in COMMAND_DESCRIPTIONS:
+                show_help(args.command)
+                return SUCCESS
+            
+            # Default to general help
+            else:
+                show_help()
+                return SUCCESS
+        
+        # Normal command processing
+        args = parse_args()
+        
+        # Handle unknown or missing command
+        if not args.command:
+            show_help()
+            return SUCCESS
+        
+        if args.command not in COMMAND_DESCRIPTIONS:
+            display_help_for_unknown_command(args.command)
+            return FAILURE
+            
+        # Execute the requested command
+        cmd_class = get_command(args.command)
         command = cmd_class(args)
         return command.execute()
+    
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return FAILURE

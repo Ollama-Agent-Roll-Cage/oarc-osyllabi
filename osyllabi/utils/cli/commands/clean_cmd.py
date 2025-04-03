@@ -13,15 +13,10 @@ class CleanCommand(Command):
     """Command for cleaning up generated files and temporary data."""
     
     @classmethod
-    def register_arguments(cls, parser: argparse.ArgumentParser) -> None:
+    def register(cls, parser: argparse.ArgumentParser) -> None:
         """Register command-specific arguments to the parser."""
         # Use the centralized parser function to setup arguments
         setup_clean_arguments(parser)
-    
-    @classmethod
-    def help_text(cls) -> str:
-        """Return help text for this command."""
-        return "Clean up generated files and temporary data"
     
     def execute(self) -> int:
         """Execute the command and return the exit code."""

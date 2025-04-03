@@ -14,14 +14,8 @@ class Command(abc.ABC):
     
     @classmethod
     @abc.abstractmethod
-    def register_arguments(cls, parser: argparse.ArgumentParser) -> None:
+    def register(cls, parser: argparse.ArgumentParser) -> None:
         """Register command-specific arguments to the parser."""
-        pass
-    
-    @classmethod
-    @abc.abstractmethod
-    def help_text(cls) -> str:
-        """Return help text for this command."""
         pass
     
     @abc.abstractmethod

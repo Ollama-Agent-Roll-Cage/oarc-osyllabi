@@ -1,5 +1,7 @@
-from pathlib import Path
+"""Configuration settings for the Osyllabus project."""
 import os
+
+from pathlib import Path
 
 # Base paths
 BASE_DIR = Path(__file__).resolve().parent.parent
