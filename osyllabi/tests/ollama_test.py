@@ -3,7 +3,7 @@ Unit tests for the Ollama API client.
 """
 import unittest
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 
 from osyllabi.ai.client import OllamaClient
 from osyllabi.config import AI_CONFIG
@@ -12,7 +12,7 @@ from osyllabi.config import AI_CONFIG
 class TestOllamaClient(unittest.TestCase):
     """Test cases for the OllamaClient class."""
 
-    @patch('osyllabi.ai.client.check_for_ollama')
+    @patch('osyllabi.ai.client.check_for_ollama')  # Fix: patch where it's imported
     @patch('osyllabi.ai.client.requests.get')
     def test_client_initialization(self, mock_get, mock_check_ollama):
         """Test that the client initializes correctly."""
@@ -30,7 +30,7 @@ class TestOllamaClient(unittest.TestCase):
         # Verify Ollama check was called
         mock_check_ollama.assert_called_once_with(raise_error=True)
 
-    @patch('osyllabi.ai.client.check_for_ollama')
+    @patch('osyllabi.ai.client.check_for_ollama')  # Fix: consistent patching
     @patch('osyllabi.ai.client.requests.post')
     def test_generate_text(self, mock_post, mock_check_ollama):
         """Test text generation with the client."""
@@ -61,11 +61,17 @@ class TestOllamaClient(unittest.TestCase):
             "stream": False
         }
         mock_post.assert_called_once()
-        actual_payload = json.loads(mock_post.call_args[1]['json'])
+        
+        # Get the actual payload directly without json.loads
+        actual_payload = mock_post.call_args[1]['json']
+        
+        # Check key elements of the payload
         self.assertEqual(actual_payload["model"], expected_payload["model"])
         self.assertEqual(actual_payload["messages"], expected_payload["messages"])
+        self.assertEqual(actual_payload["temperature"], expected_payload["temperature"])
+        self.assertEqual(actual_payload["num_predict"], expected_payload["num_predict"])
 
-    @patch('osyllabi.ai.client.check_for_ollama')
+    @patch('osyllabi.ai.client.check_for_ollama')  # Fix: consistent patching
     @patch('osyllabi.ai.client.requests.post')
     def test_chat_completion(self, mock_post, mock_check_ollama):
         """Test chat completion with the client."""
@@ -93,10 +99,10 @@ class TestOllamaClient(unittest.TestCase):
         mock_post.assert_called_once()
         self.assertEqual(result, mock_response.json.return_value)
         
-        # Verify proper endpoint was used
+        # Verify proper enydpoint was used
         self.assertTrue(mock_post.call_args[0][0].endswith('/api/chat'))
 
-    @patch('osyllabi.ai.client.check_for_ollama')
+    @patch('osyllabi.ai.client.check_for_ollama')  # Fix: consistent patching
     @patch('osyllabi.ai.client.requests.post')
     def test_embedding_generation(self, mock_post, mock_check_ollama):
         """Test embedding generation with the client."""

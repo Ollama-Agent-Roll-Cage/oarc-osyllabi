@@ -12,8 +12,9 @@ from urllib.parse import urlparse
 from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
 
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
 from osyllabi.utils.log import log
-from osyllabi.utils.decorators.retry import retry
 from osyllabi.generator.resource.collector import CollectorABC
 from osyllabi.generator.resource.extractor import ContentExtractorABC
 
@@ -109,7 +110,12 @@ class WebResourceCollector(CollectorABC):
         
         return resources
     
-    @retry(attempts=2, delay=1, backoff=2, exceptions=(requests.RequestException,))
+    @retry(
+        stop=stop_after_attempt(2), 
+        wait=wait_exponential(multiplier=1, min=1, max=4),
+        retry=retry_if_exception_type(requests.RequestException),
+        reraise=True
+    )
     def extract_url_content(self, url: str) -> Dict[str, Any]:
         """
         Extract content from a URL.

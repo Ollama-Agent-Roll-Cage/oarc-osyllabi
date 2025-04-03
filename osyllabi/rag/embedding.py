@@ -1,18 +1,15 @@
 """
-Embedding generation for RAG capabilities in Osyllabi.
-
-This module provides functionality for generating embeddings from text
-using Ollama's embedding API, to support vector-based retrieval.
+Embedding generation for vector representations of text.
 """
-from typing import List, Dict, Optional, Any, Union
-import time
-import numpy as np
+import hashlib
+from typing import Dict, List, Any, Optional, Set
+
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+import requests
 
 from osyllabi.utils.log import log
-from osyllabi.utils.utils import check_for_ollama
-from osyllabi.ai.client import OllamaClient
 from osyllabi.utils.decorators.singleton import singleton
-from osyllabi.utils.decorators.retry import retry
+from osyllabi.ai.client import OllamaClient
 
 
 @singleton
@@ -71,7 +68,7 @@ class EmbeddingGenerator:
             self._embedding_dim = 4096
             log.warning(f"Couldn't determine embedding dimension, using default: {self._embedding_dim}")
             
-    @retry(attempts=2, delay=1, backoff=2)
+    @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=4), retry=retry_if_exception_type(Exception))
     def embed_texts(self, texts: List[str]) -> List[List[float]]:
         """
         Generate embeddings for multiple texts.
@@ -139,7 +136,7 @@ class EmbeddingGenerator:
         
         return result
             
-    @retry(attempts=2, delay=1, backoff=2)
+    @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=4), retry=retry_if_exception_type(Exception))
     def embed_text(self, text: str) -> List[float]:
         """
         Generate embedding for a single text.

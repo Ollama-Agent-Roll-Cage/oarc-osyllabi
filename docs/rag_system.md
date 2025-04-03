@@ -184,4 +184,3 @@ The system includes performance monitoring through `RAGMonitor`:
 - **Embedding performance**: Monitoring embedding generation time
 - **Query history**: Recording recent queries and results
 - **Statistics tracking**: Collecting system-wide performance data
-````

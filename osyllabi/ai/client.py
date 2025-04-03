@@ -5,10 +5,11 @@ import json
 import requests
 from typing import Dict, Any, Optional, List, Union, Generator
 
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
 from osyllabi.utils.log import log
 from osyllabi.utils.utils import check_for_ollama
 from osyllabi.utils.decorators.singleton import singleton
-from osyllabi.utils.decorators.retry import retry
 from osyllabi.config import AI_CONFIG
 
 
@@ -68,7 +69,12 @@ class OllamaClient:
             log.error(f"Failed to connect to Ollama server: {e}")
             return False
 
-    @retry(attempts=3, delay=1, backoff=2, exceptions=(requests.RequestException,))
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type(requests.RequestException),
+        reraise=True
+    )
     def generate(
         self, 
         prompt: str, 
@@ -162,7 +168,12 @@ class OllamaClient:
             log.error(f"Streaming API request failed: {e}")
             raise RuntimeError(f"Failed to stream text: {e}")
 
-    @retry(attempts=3, delay=1, backoff=2, exceptions=(requests.RequestException,))
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type(requests.RequestException),
+        reraise=True
+    )
     def chat(
         self, 
         messages: List[Dict[str, str]], 
@@ -272,7 +283,12 @@ class OllamaClient:
             log.error(f"Failed to list models: {e}")
             raise RuntimeError(f"Failed to list models: {e}")
 
-    @retry(attempts=3, delay=1, backoff=2, exceptions=(requests.RequestException,))
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type(requests.RequestException),
+        reraise=True
+    )
     def embed(
         self,
         text: str,
@@ -323,7 +339,12 @@ class OllamaClient:
             log.error(f"Embedding API request failed: {e}")
             raise RuntimeError(f"Failed to generate embedding: {e}")
             
-    @retry(attempts=3, delay=1, backoff=2, exceptions=(requests.RequestException,))
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type(requests.RequestException),
+        reraise=True
+    )
     def embed_batch(
         self,
         texts: List[str],

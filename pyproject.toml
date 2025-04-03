@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "osyllabi"
 version = "0.1.0"
-description = "A Python-powered curriculum designer leveraging AI, web crawling, and data integration"
+description = "A state-of-the-art curriculum designer leveraging AI, web crawling, and data integration"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "Apache 2.0"}
@@ -28,34 +28,37 @@ classifiers = [
 dependencies = [
     # Core dependencies
     "PyQt6>=6.5.0",
-    "requests>=2.28.0",  # Required for web requests and API calls
-    "ollama>=0.4.7",     # Required - Ollama API client library
-    "asyncio>=3.4.3",    # Required for asynchronous operations
-    "numpy>=2.2.4",      # Required for vector operations
-    "pandas>=2.2.3",      # Required for data manipulation and analysis
+    "requests>=2.28.0",        # web requests and API calls
+    "ollama>=0.4.7",           # Ollama API client library
+    "asyncio>=3.4.3",          # asynchronous operations
+    "numpy>=2.2.4",            # vector operations
+    "pandas>=2.2.3",           # data manipulation and analysis
+    "tenacity>=9.1.2",         # retrying operations with exponential backoff
     
-    # Web and document processing
-    "beautifulsoup4>=4.11.0",  # Required for HTML parsing and extraction
-    "markdown>=3.5.0",         # Required for markdown processing
-    "pymupdf>=1.23.0",         # Required for PDF processing
-    "python-docx>=1.0.0",      # Required for DOCX processing
+    # Web and document
+    "beautifulsoup4>=4.11.0",  # HTML parsing and extraction
+    "markdown>=3.5.0",         # markdown processing
+    "pymupdf>=1.23.0",         # PDF processing
+    "python-docx>=1.0.0",      # DOCX processing
     
-    # Machine learning dependencies
-    "scikit-learn>=1.4.0",     # Required for vector operations and ML utilities
-    "faiss-cpu>=1.7.0",        # Required for vector search (auto-upgrades to GPU version if available)
+    # Machine learning 
+    "scikit-learn>=1.4.0",     # vector operations and ML utilities
+    "faiss-cpu>=1.7.0",        # vector search (auto-upgrades to GPU version if available)
     
-    # RAG dependencies
-    "langchain>=0.1.0",        # Required for advanced text chunking and RAG pipelines
-    "tiktoken>=0.5.2",         # Required for accurate token counting
+    # RAG and LLMs
+    "langchain>=0.1.0",        # advanced text chunking and RAG pipelines
+    "tiktoken>=0.5.2",         # accurate token counting
 ]
 
 [project.optional-dependencies]
-# Only development tools remain in the optional dependencies
 dev = [
-    "pytest>=7.2.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "mock>=5.0.0",
+    "pytest-timeout>=2.0.0",
+    "pytest-xdist>=3.0.0",
     "flake8>=6.0.0",
-    "black>=23.0.0",
-    "mypy>=1.0.0",
+    "mypy>=1.0.0"
 ]
 
 [project.urls]
@@ -70,3 +73,17 @@ osyllabi = "osyllabi.main:main"
 packages = ["osyllabi"]
 include-package-data = true
 zip-safe = false
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[tool.coverage.run]
+source = ["osyllabi"]
+omit = [
+    "*/tests/*",
+    "setup.py",
+]

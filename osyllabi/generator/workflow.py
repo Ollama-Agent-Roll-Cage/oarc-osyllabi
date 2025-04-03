@@ -1,13 +1,13 @@
 """
-Curriculum generation workflow management.
-
-This module provides the workflow for curriculum generation, including
-resource collection, content generation, and assembly.
+Curriculum workflow management.
 """
 import time
 import importlib.util
 from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
+
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+import requests
 
 from osyllabi.utils.log import log
 from osyllabi.utils.utils import check_for_ollama

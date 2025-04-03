@@ -5,8 +5,7 @@ import sys
 import textwrap
 from typing import Optional, Dict, List, Tuple
 
-from osyllabi.utils.cli.cmd_descriptions import COMMAND_DESCRIPTIONS
-from osyllabi.utils.cli.cmd_types import CommandType
+from osyllabi.utils.cli.cmd_desc import COMMAND_DESC
 
 from osyllabi.utils.log import log
 
@@ -166,9 +165,9 @@ def show_help(command: Optional[str] = None) -> None:
         command: Specific command to show help for, or None for general help
     """
     if command:
-        display_command_help(command, COMMAND_DESCRIPTIONS)
+        display_command_help(command, COMMAND_DESC)
     else:
-        display_general_help(COMMAND_DESCRIPTIONS)
+        display_general_help(COMMAND_DESC)
     
     display_epilog()
 
