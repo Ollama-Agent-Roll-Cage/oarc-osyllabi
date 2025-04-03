@@ -27,46 +27,53 @@ def get_command_usage_info(command_name: str) -> Tuple[str, Dict[str, str], List
     """
     # Default usage pattern
     usage = f"Usage: osyllabi {command_name}"
-    options = {}
+    options = {
+        "--debug": "Enable debug mode for detailed logging and error information"
+    }
     examples = []
     
     if command_name == "create":
         usage += " TOPIC [options]"
-        options = {
-            "--title, -t": "Title of the curriculum",
+        options.update({
+            "TOPIC": "Main topic or subject for the curriculum (required)",
+            "--title, -t": "Custom title for the curriculum (default: '<topic> Curriculum')",
             "--level, -s": "Target skill level (Beginner, Intermediate, Advanced, Expert)",
             "--links, -l": "URLs to include as resources",
             "--source": "Source files or directories to include\nDefault: current directory",
             "--export-path, -o": "Directory to export the curriculum",
             "--format, -f": "Output format (md, pdf, html, docx)",
             "--help, -h": "Display this help message"
-        }
+        })
         examples = [
             'osyllabi create "Machine Learning" --title "ML Fundamentals" --level Beginner',
-            'osyllabi create "Python Programming" --links "https://docs.python.org" --format pdf'
+            'osyllabi create "Python Programming" --links "https://docs.python.org" --format pdf',
+            'osyllabi create "Web Development" -t "Full Stack Web Dev" -s Advanced',
+            'osyllabi create "Data Science" --debug'  # Add example with debug flag
         ]
     elif command_name == "clean":
         usage += " [options]"
-        options = {
+        options.update({
             "--output-dir": "Clean specific output directory",
             "--all, -a": "Clean all generated files",
             "--cache": "Clean only cached files",
             "--force, -f": "Force clean without confirmation",
             "--help, -h": "Display this help message"
-        }
+        })
         examples = [
             'osyllabi clean --all',
-            'osyllabi clean --output-dir "./output" --force'
+            'osyllabi clean --output-dir "./output" --force',
+            'osyllabi clean --all --debug'  # Add example with debug flag
         ]
     elif command_name == "help":
         usage += " [command]"
-        options = {
+        options.update({
             "command": "Command to get help for",
             "--help, -h": "Display this help message"
-        }
+        })
         examples = [
             'osyllabi help',
-            'osyllabi help create'
+            'osyllabi help create',
+            'osyllabi help --debug'  # Add example with debug flag
         ]
     
     return usage, options, examples
@@ -119,15 +126,16 @@ def display_general_help(command_descriptions: Dict[str, str]) -> None:
     """Display general help for all commands."""
     display_header()
     
-    print("Usage: osyllabi COMMAND [options]")
+    print("Usage: osyllabi [options] COMMAND [command-options]")
     
     print("\nCommands:")
     max_len = max(len(name) for name in command_descriptions.keys())
     for cmd_name, description in sorted(command_descriptions.items()):
         print(f"  {cmd_name.ljust(max_len)}    {description}")
     
-    print("\nOptions:")
+    print("\nGlobal Options:")
     print("  --help, -h         Display help for a command")
+    print("  --debug            Enable debug mode for detailed logging and error information")
     
     print("\nRun 'osyllabi <command> --help' for more information on a specific command.")
 

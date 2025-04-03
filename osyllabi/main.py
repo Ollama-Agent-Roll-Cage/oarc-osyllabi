@@ -5,7 +5,7 @@ Main entry point for Osyllabi application.
 import sys
 from typing import Optional, List
 
-from osyllabi.utils.log import log, is_debug_mode
+from osyllabi.utils.log import is_debug_mode
 from osyllabi.utils.cli.router import handle
 
 
@@ -20,16 +20,14 @@ def main(args: Optional[List[str]] = None) -> int:
         int: Exit code
     """
     try:
-        # Handle CLI commands
-        return handle(args)
-    except KeyboardInterrupt:
-        # Handle Ctrl+C gracefully
-        print("\nOperation cancelled by user.", file=sys.stderr)
-        return 130  # Standard exit code for SIGINT
+        return handle(args)   # Handle CLI commands
+    except KeyboardInterrupt: # Handle Ctrl+C gracefully
+        print("\nCancelled by user.", file=sys.stderr)
+        return 130            # Standard exit code for SIGINT
     except Exception as e:
-        # Last-resort exception handler
         print(f"Unhandled error: {e}", file=sys.stderr)
         
+        # Provide detailed error information if in debug mode
         if is_debug_mode():
             import traceback
             traceback.print_exc()

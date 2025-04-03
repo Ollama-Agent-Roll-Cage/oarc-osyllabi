@@ -3,31 +3,160 @@ Curriculum generation functionality.
 """
 import os
 import sys
-from dataclasses import dataclass
-from typing import List, Optional, Union
+import argparse
+from typing import List, Optional, Union, Tuple, Any
 from pathlib import Path
 from datetime import datetime
 
-from osyllabi.utils.log import log
+from osyllabi.utils.log import log, with_context
+from osyllabi.utils.const import SUCCESS, FAILURE
+from osyllabi.utils.paths import get_output_directory, create_unique_file_path
+from osyllabi.utils.decorators.factory import factory
 
 
+@factory
 class Curriculum:
     """Represents a generated curriculum."""
     
-    def __init__(self, topic: str, title: Optional[str] = None):
+    def __init__(
+        self, 
+        topic: str = None,
+        title: Optional[str] = None,
+        skill_level: str = "Beginner",
+        links: Optional[List[str]] = None,
+        source: Optional[List[str]] = None,
+        args: Optional[argparse.Namespace] = None
+    ):
         """
         Initialize a new curriculum.
         
         Args:
-            topic: The main subject of the curriculum
+            topic: The main topic/subject of the curriculum (required normally, but optional when args is provided)
             title: Optional title (defaults to "{topic} Curriculum")
+            skill_level: Target skill level (Beginner, Intermediate, Advanced, Expert)
+            links: List of URLs to include as resources
+            source: Source files or directories to include
+            args: Optional command-line arguments
+            
+        Raises:
+            ValueError: If topic is empty or only whitespace and args is not provided
         """
-        self.topic = topic
-        self.title = title or f"{topic} Curriculum"
+        # Store initialization result to be returned by factory
+        self._result = None
+        
+        # Process command-line args if provided
+        if args is not None:
+            self._result = self._process_args(args)
+            return
+            
+        # Normal initialization
+        if not topic or not topic.strip():
+            raise ValueError("Topic cannot be empty")
+            
+        self.topic = topic.strip()
+        self.title = title.strip() if title and title.strip() else f"{self.topic} Curriculum"
+        self.skill_level = skill_level
+        self.links = links or []
+        self.source = source or ["."]
         self.content = ""
         self.created_at = datetime.now()
         
         log.debug(f"Created new curriculum: {self.title}")
+    
+    def _process_args(self, args: argparse.Namespace) -> Tuple[int, Optional[Path]]:
+        """
+        Process command-line arguments and create/export a curriculum.
+        
+        Args:
+            args: The parsed command line arguments
+            
+        Returns:
+            Tuple containing (exit_code, output_path)
+        """
+        topic = args.topic.strip()
+        if not topic:
+            log.error("Topic cannot be empty")
+            print("Error: Topic is required and cannot be empty", file=sys.stderr)
+            print(f"Run 'osyllabi create --help' for more information.", file=sys.stderr)
+            return FAILURE, None
+            
+        log.info(f"Creating curriculum on topic: {topic}")
+        print(f"Creating curriculum on topic: {topic}")
+        
+        try:
+            # Initialize this instance
+            self.topic = topic
+            self.title = args.title.strip() if args.title and args.title.strip() else f"{topic} Curriculum"
+            self.skill_level = args.level
+            self.links = args.links or []
+            self.source = args.source or ["."]
+            self.content = ""
+            self.created_at = datetime.now()
+            
+            # Generate the curriculum content
+            self.generate_content()
+            
+            if args.export_path:
+                export_path = args.export_path
+            else:
+                # Use default output directory if not specified
+                output_dir = get_output_directory()
+                filename = self.title
+                export_path = create_unique_file_path(output_dir, filename, args.format)
+            
+            # Export the curriculum
+            try:
+                result_path = self.export(export_path, fmt=args.format)
+                log.info(f"Curriculum exported to {result_path}")
+                print(f"Curriculum exported to {result_path}")
+                return SUCCESS, result_path
+            except NotImplementedError as e:
+                log.error(f"Export error: {e}")
+                print(f"Export error: {e}", file=sys.stderr)
+                print(f"Supported formats are: {', '.join(args.format.choices)}")
+                return FAILURE, None
+            except Exception as e:
+                log.error(f"Error exporting curriculum: {e}")
+                print(f"Error exporting curriculum: {e}", file=sys.stderr)
+                return FAILURE, None
+            
+        except ValueError as e:
+            log.error(f"Invalid input: {e}")
+            print(f"Error: {e}", file=sys.stderr)
+            return FAILURE, None
+        except Exception as e:
+            log.error(f"Error creating curriculum: {e}")
+            print(f"Error creating curriculum: {e}", file=sys.stderr)
+            if 'OSYLLABI_DEBUG' in os.environ:
+                import traceback
+                traceback.print_exc()
+            return FAILURE, None
+        
+    def generate_content(self) -> None:
+        """Generate the content for the curriculum."""
+        log.info(f"Generating curriculum content for topic: {self.topic}")
+        
+        with with_context(topic=self.topic, skill_level=self.skill_level):
+            # Generate basic structure
+            self.content = f"""# {self.title}
+
+## Overview
+A curriculum for learning about {self.topic} at the {self.skill_level} level.
+
+## Resources
+"""
+            
+            # Add links
+            if self.links:
+                log.debug(f"Adding {len(self.links)} external links to curriculum")
+                self.content += "\n### External Links\n"
+                for link in self.links:
+                    self.content += f"- [{link}]({link})\n"
+            
+            # Add placeholder for content sections that would be filled by more advanced implementation
+            self.content += "\n## Learning Path\n\n*Curriculum content generation in progress...*\n"
+            
+            log.info(f"Generated curriculum content: {self.title}")
     
     def export(self, path: Union[str, Path], fmt: str = 'md') -> Path:
         """
@@ -44,6 +173,10 @@ class Curriculum:
             NotImplementedError: If export format is not supported yet
             IOError: For file system related errors
         """
+        # Generate content if it hasn't been generated yet
+        if not self.content:
+            self.generate_content()
+            
         # Convert path to Path object if it's a string
         if isinstance(path, str):
             path = Path(path)
@@ -78,67 +211,3 @@ class Curriculum:
             log.error(f"Error exporting curriculum: {e}")
             print(f"Error exporting curriculum: {e}", file=sys.stderr)
             raise
-            
-
-class CurriculumGenerator:
-    """Generates curriculum content based on various inputs."""
-    
-    def __init__(
-        self, 
-        topic: str, 
-        title: Optional[str] = None,
-        skill_level: str = "Beginner",
-        links: Optional[List[str]] = None,
-        source: Optional[List[str]] = None
-    ):
-        """
-        Initialize a new curriculum generator.
-        
-        Args:
-            topic: The main topic for the curriculum
-            title: Optional title (defaults to "{topic} Curriculum")
-            skill_level: Target skill level (Beginner, Intermediate, Advanced, Expert)
-            links: List of URLs to include as resources
-            source: Source files or directories to include
-        """
-        self.topic = topic
-        self.title = title
-        self.skill_level = skill_level
-        self.links = links or []
-        self.source = source or ["."]
-        
-        log.debug(f"Initialized curriculum generator for topic: {topic}, skill level: {skill_level}")
-        
-    def create(self) -> Curriculum:
-        """
-        Generate a curriculum based on the configured parameters.
-        
-        Returns:
-            Curriculum: The generated curriculum
-        """
-        log.info(f"Generating curriculum for topic: {self.topic}")
-        
-        with log.with_context(topic=self.topic, skill_level=self.skill_level):
-            curriculum = Curriculum(self.topic, self.title)
-            
-            # Generate basic structure
-            curriculum.content = f"""# {curriculum.title}
-
-## Overview
-A curriculum for learning about {self.topic} at the {self.skill_level} level.
-
-## Resources
-"""
-            
-            # Add links
-            if self.links:
-                log.debug(f"Adding {len(self.links)} external links to curriculum")
-                curriculum.content += "\n### External Links\n"
-                for link in self.links:
-                    curriculum.content += f"- [{link}]({link})\n"
-            
-            # Add placeholder for content sections that would be filled by more advanced implementation
-            curriculum.content += "\n## Learning Path\n\n*Curriculum content generation in progress...*\n"
-            
-            log.info(f"Created curriculum: {curriculum.title}")
-            return curriculum

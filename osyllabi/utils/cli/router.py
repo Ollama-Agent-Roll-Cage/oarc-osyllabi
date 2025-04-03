@@ -11,6 +11,7 @@ from osyllabi.utils.cli.cmd_types import CommandType
 from osyllabi.utils.cli.parser import parse_args
 from osyllabi.utils.cli.help import show_help, is_help_requested, display_help_for_unknown_command
 from osyllabi.utils.const import FAILURE, SUCCESS
+from osyllabi.utils.log import setup_logger, DEBUG, INFO
 
 
 # Map of command types to their descriptions
@@ -65,6 +66,15 @@ def handle(args_list: Optional[List[str]] = None) -> int:
         # Parse arguments first
         args = parse_args(args_list)
         
+        # Handle debug mode
+        if hasattr(args, 'debug_mode') and args.debug_mode:
+            # Set environment variable for other parts of the application
+            os.environ['OSYLLABI_DEBUG'] = '1'
+            # Reconfigure logger with debug level
+            from osyllabi.utils.log import log
+            log.setLevel(DEBUG)
+            print("Debug mode enabled.", file=sys.stderr)
+        
         # Handle help requests consistently
         if args.help_requested or (args.command == 'help' and not getattr(args, 'subcommand', None)):
             show_help()
@@ -90,7 +100,13 @@ def handle(args_list: Optional[List[str]] = None) -> int:
         # Execute the requested command
         cmd_class = get_command(args.command)
         command = cmd_class(args)
-        return command.execute()
+        exit_code = command.execute()
+        
+        # If debug mode is enabled, show more information about the result
+        if os.environ.get('OSYLLABI_DEBUG', '').lower() in ('1', 'true', 'yes'):
+            print(f"Command {args.command} completed with exit code: {exit_code}", file=sys.stderr)
+            
+        return exit_code
     
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")
@@ -100,10 +116,11 @@ def handle(args_list: Optional[List[str]] = None) -> int:
         # Provide more detailed error information to help with debugging
         print(f"Error: {e}", file=sys.stderr)
         
-        # Check for debug mode environment variable
+        # Check for debug mode environment variable or command line flag
         if os.environ.get('OSYLLABI_DEBUG', '').lower() in ('1', 'true', 'yes'):
             print("\nDetailed traceback:", file=sys.stderr)
             traceback.print_exc()
+        else:
+            print("\nRun with --debug flag or set environment variable OSYLLABI_DEBUG=1 for detailed error information.", file=sys.stderr)
             
-        print("\nRun with environment variable OSYLLABI_DEBUG=1 for detailed error information.", file=sys.stderr)
         return FAILURE
