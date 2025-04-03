@@ -35,6 +35,12 @@ RAG_CONFIG = {
     'enable_rag': os.getenv('OSYLLABUS_ENABLE_RAG', 'true').lower() in ('true', 'yes', '1')
 }
 
+# FAISS Configuration
+FAISS_CONFIG = {
+    'upgrade_on_import': os.getenv('OSYLLABUS_UPGRADE_FAISS', 'false').lower() in ('true', 'yes', '1'),
+    'use_gpu': os.getenv('OSYLLABUS_FAISS_USE_GPU', 'true').lower() in ('true', 'yes', '1')
+}
+
 # Supported file types for sources
 SUPPORTED_FILE_EXTENSIONS = [
     '.txt', '.md', '.tex', '.rst', '.html',

@@ -2,17 +2,18 @@
 Text chunking for RAG capabilities in Osyllabi.
 
 This module provides functionality for splitting text into chunks
-suitable for embedding and retrieval in the RAG system.
+suitable for embedding and retrieval in the RAG system, using
+LangChain's text splitters for optimal results.
 """
-import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
+import importlib.util
 
 from osyllabi.utils.log import log
 
 
 class TextChunker:
     """
-    Split text into chunks for embedding.
+    Split text into chunks for embedding using LangChain.
     
     This class provides functionality to divide documents into
     smaller, overlapping chunks suitable for vector embedding.
@@ -28,7 +29,32 @@ class TextChunker:
         """
         self.chunk_size = chunk_size
         self.overlap = min(overlap, chunk_size // 2)
+        self.text_splitter = None
+        self._initialize_splitter()
         
+    def _initialize_splitter(self) -> None:
+        """Initialize the LangChain text splitter or fallback to custom splitting."""
+        # Check if langchain is available
+        langchain_available = importlib.util.find_spec("langchain") is not None
+        text_splitters_available = importlib.util.find_spec("langchain.text_splitter") is not None
+        
+        if langchain_available and text_splitters_available:
+            try:
+                from langchain.text_splitter import RecursiveCharacterTextSplitter
+                self.text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=self.chunk_size,
+                    chunk_overlap=self.overlap,
+                    length_function=len,
+                    separators=["\n\n", "\n", " ", ""]
+                )
+                log.info("Using LangChain's RecursiveCharacterTextSplitter for text chunking")
+            except Exception as e:
+                log.error(f"Failed to initialize LangChain text splitter: {e}")
+                self.text_splitter = None
+        else:
+            log.warning("LangChain not available. Using fallback text chunking.")
+            self.text_splitter = None
+            
     def chunk_text(self, text: str) -> List[str]:
         """
         Split text into overlapping chunks.
@@ -39,8 +65,31 @@ class TextChunker:
         Returns:
             List of text chunks
         """
-        if not text or len(text) < self.chunk_size // 2:
-            return [text] if text else []
+        if not text or not text.strip():
+            return []
+            
+        # Use LangChain if available
+        if self.text_splitter:
+            try:
+                return self.text_splitter.split_text(text)
+            except Exception as e:
+                log.error(f"LangChain text splitting failed: {e}. Falling back to custom chunking.")
+                return self._fallback_chunk_text(text)
+        else:
+            return self._fallback_chunk_text(text)
+    
+    def _fallback_chunk_text(self, text: str) -> List[str]:
+        """
+        Fallback chunking when LangChain is not available.
+        
+        Args:
+            text: Text to chunk
+            
+        Returns:
+            List of text chunks
+        """
+        if len(text) < self.chunk_size // 2:
+            return [text]
             
         # Clean the text
         cleaned_text = self._clean_text(text)
@@ -56,34 +105,20 @@ class TextChunker:
         return chunks
     
     def _clean_text(self, text: str) -> str:
-        """
-        Clean and normalize text before chunking.
-        
-        Args:
-            text: Raw text to clean
-            
-        Returns:
-            Cleaned text
-        """
+        """Clean and normalize text before chunking."""
+        import re
         # Normalize whitespace
         text = re.sub(r'\s+', ' ', text).strip()
         
         # Replace Unicode quotes with ASCII quotes
         text = text.replace('"', '"').replace('"', '"')
-        text = text.replace(''', "'").replace(''', "'")
+        text = text.replace('’', "'").replace('’', "'")
         
         return text
     
     def _chunk_by_paragraphs(self, text: str) -> List[str]:
-        """
-        Split text into chunks by paragraphs.
-        
-        Args:
-            text: Cleaned text to split
-            
-        Returns:
-            List of paragraph-based chunks
-        """
+        """Split text into chunks by paragraphs."""
+        import re
         # Split by paragraph breaks
         paragraphs = re.split(r'\n\s*\n', text)
         paragraphs = [p.strip() for p in paragraphs if p.strip()]
@@ -126,15 +161,7 @@ class TextChunker:
         return chunks
     
     def _chunk_by_characters(self, text: str) -> List[str]:
-        """
-        Split text into chunks by characters with overlap.
-        
-        Args:
-            text: Cleaned text to split
-            
-        Returns:
-            List of character-based chunks
-        """
+        """Split text into chunks by characters with overlap."""
         chunks = []
         start = 0
         
@@ -170,14 +197,18 @@ class TextChunker:
         """
         Estimate the number of tokens in the text.
         
-        This is a simple approximation as actual tokenization
-        depends on the specific model.
-        
         Args:
             text: Text to count tokens in
             
         Returns:
             Estimated token count
         """
-        # Simple approximation: count words and punctuation
-        return len(re.findall(r'\w+|[^\w\s]', text))
+        # Try to use tiktoken if available for accurate counting
+        try:
+            import tiktoken
+            encoding = tiktoken.get_encoding("cl100k_base")  # Default for many models
+            return len(encoding.encode(text))
+        except ImportError:
+            # Simple approximation: count words and punctuation
+            import re
+            return len(re.findall(r'\w+|[^\w\s]', text))

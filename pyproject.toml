@@ -24,6 +24,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Application Frameworks",
 ]
 
+# All runtime dependencies consolidated into a single section
 dependencies = [
     # Core dependencies
     "PyQt6>=6.5.0",
@@ -35,30 +36,25 @@ dependencies = [
     
     # Machine learning dependencies
     "scikit-learn>=1.4.0",
+    "faiss-cpu>=1.7.0",
+    
+    # RAG dependencies
+    "langchain>=0.1.0",    # For advanced text chunking and RAG pipelines
+    "tiktoken>=0.5.2",     # For accurate token counting
+    
+    # Document processing 
+    "pymupdf>=1.23.0",     # For PDF processing
+    "python-docx>=1.0.0",  # For DOCX processing
+    "markdown>=3.5.0",     # For markdown processing
 ]
 
 [project.optional-dependencies]
+# Only development tools remain in the optional dependencies
 dev = [
     "pytest>=7.2.0",
     "flake8>=6.0.0",
     "black>=23.0.0",
     "mypy>=1.0.0",
-]
-
-gpu = [
-    "faiss-gpu>=1.7.0",
-]
-
-cpu = [
-    "faiss-cpu>=1.7.0",
-]
-
-full = [
-    "faiss-cpu>=1.7.0",
-    "sentence-transformers>=2.2.2",
-    "pymupdf>=1.23.0",      # For PDF processing
-    "python-docx>=1.0.0",   # For DOCX processing
-    "markdown>=3.5.0",       # For markdown processing
 ]
 
 [project.urls]

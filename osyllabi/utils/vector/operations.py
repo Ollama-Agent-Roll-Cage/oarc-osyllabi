@@ -5,19 +5,27 @@ This module provides advanced vector mathematics operations using scikit-learn
 and other libraries to support retrieval-augmented generation capabilities.
 """
 import numpy as np
-from typing import List, Union, Optional, Tuple
+from typing import List, Union, Optional, Tuple, Any
+
+from osyllabi.utils.log import log
 
 # Use scikit-learn's efficient implementations
 from sklearn.metrics.pairwise import cosine_similarity as sk_cosine_similarity
 from sklearn.preprocessing import normalize as sk_normalize
 from sklearn.decomposition import PCA
 
-# Try to import FAISS for efficient vector search if available
+# Try to import FAISS for efficient vector search
 try:
     import faiss
     FAISS_AVAILABLE = True
+    # Check if we have GPU support
+    FAISS_GPU_AVAILABLE = hasattr(faiss, 'StandardGpuResources')
+    if FAISS_GPU_AVAILABLE:
+        log.debug("FAISS GPU support is available")
 except ImportError:
     FAISS_AVAILABLE = False
+    FAISS_GPU_AVAILABLE = False
+    log.debug("FAISS is not available")
 
 
 def cosine_similarity(vec1: Union[List[float], np.ndarray], 
@@ -185,7 +193,7 @@ def batch_cosine_similarity(query_vector: Union[List[float], np.ndarray],
     return similarities.tolist()
 
 
-def create_faiss_index(vectors: List[List[float]], use_gpu: bool = False) -> Any:
+def create_faiss_index(vectors: List[List[float]], use_gpu: bool = True) -> Any:
     """
     Create a FAISS index for efficient similarity search.
     
@@ -215,12 +223,16 @@ def create_faiss_index(vectors: List[List[float]], use_gpu: bool = False) -> Any
     index = faiss.IndexFlatL2(d)
     
     # Use GPU if requested and available
-    if use_gpu:
+    if use_gpu and FAISS_GPU_AVAILABLE:
         try:
             res = faiss.StandardGpuResources()
             index = faiss.index_cpu_to_gpu(res, 0, index)
+            log.debug("Using GPU-accelerated FAISS index")
         except Exception as e:
-            print(f"GPU acceleration requested but failed: {e}. Falling back to CPU.")
+            log.warning(f"GPU acceleration requested but failed: {e}. Falling back to CPU.")
+    else:
+        if use_gpu and not FAISS_GPU_AVAILABLE:
+            log.debug("GPU acceleration requested but FAISS GPU support not available")
     
     # Add vectors to the index
     index.add(np_vectors)

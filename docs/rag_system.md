@@ -298,38 +298,31 @@ class LearningPathAgent(Agent):
 
 ## Performance Considerations
 
+### Limitations
+
+1. **Model Dependency**: Embedding quality depends on the chosen model.
+2. **Cold Start**: The first generation has minimal context until resources are processed.
+3. **Cross-Curriculum Knowledge**: Each curriculum run has its own isolated knowledge base.
+4. **Language Support**: Current embedding models work best with English content.
+
+### Speed Optimization
+
+Several techniques improve RAG performance:
+
+1. **Paragraph-based Chunking**: The system tries to preserve semantic units by chunking at paragraph boundaries.
+2. **Asynchronous Processing**: Resources are processed as they're collected.
+3. **Fallback Mechanisms**: The system can operate even when optimal components aren't available.
+4. **Isolation by Run**: Each curriculum generation has its own vector database to prevent cross-contamination.
+
 ### Memory Usage
 
-The SQLite vector database is efficient for curriculum-sized data:
-2. **Hybrid Search**: Combine vector search with keyword and metadata filtering
+- **Memory Usage**: 50-200 MB during generation, depending on the embedding model.
+- **Database Size**: Typically 10-50 MB per curriculum run.
+- **Disk Space**: Each run creates its own database, stored in the run directory.
 
+### Enhancements
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Without RAG:### Enhancing Learning Path Generation## Practical Examples4. **Language Support**: Current embedding models work best with English content3. **Cross-Curriculum Knowledge**: Each curriculum run has its own isolated knowledge base2. **Cold Start**: First generation has minimal context until resources are processed1. **Model Dependency**: Embedding quality depends on the chosen modelCurrent limitations of the RAG system:### Limitations4. **Isolation by Run**: Each curriculum generation has its own vector database to prevent cross-contamination3. **Fallback Mechanisms**: The system can operate even when optimal components aren't available2. **Asynchronous Processing**: Resources are processed as they're collected1. **Paragraph-based Chunking**: The system tries to preserve semantic units by chunking at paragraph boundariesSeveral techniques improve RAG performance:### Speed Optimization- **Disk Space**: Each run creates its own database, stored in the run directory- **Memory Usage**: 50-200 MB during generation, depending on embedding model- **Database Size**: Typically 10-50 MB per curriculum run3. **Active Learning**: Improve embeddings based on user feedback
-4. **Multi-Modal Embeddings**: Support for images and code in addition to text
-5. **Reranking**: Use a second model to rerank initial search results for higher relevance
+1. **Hybrid Search**: Combine vector search with keyword and metadata filtering.
+2. **Active Learning**: Improve embeddings based on user feedback.
+3. **Multi-Modal Embeddings**: Support for images and code in addition to text.
+4. **Reranking**: Use a second model to rerank initial search results for higher relevance.

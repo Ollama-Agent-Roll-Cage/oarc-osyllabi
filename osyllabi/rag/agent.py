@@ -4,7 +4,7 @@ Agent integration for RAG-enhanced curriculum generation.
 This module provides base classes and utilities for incorporating RAG
 capabilities into curriculum generation agents.
 """
-from typing import List, Dict, Any, Optional, Union
+from typing import Dict, Any, Optional
 
 from osyllabi.utils.log import log
 from osyllabi.rag.engine import RAGEngine

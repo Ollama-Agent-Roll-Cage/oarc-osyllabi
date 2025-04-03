@@ -4,7 +4,7 @@ Context assembly functionality for RAG-enhanced prompts.
 This module provides utilities for formatting and assembling retrieved
 context to enhance prompts for curriculum generation.
 """
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
 
 from osyllabi.utils.log import log
 
