@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=77.0.3", "wheel>=0.41.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "osyllabi"
+version = "0.1.0"
+description = "A Python-powered curriculum designer leveraging AI, web crawling, and data integration"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "Apache 2.0"}
+authors = [
+    {name = "K. Rawson", email = "rawsonkara@gmail.com"}
+]
+maintainers = [
+    {name = "K. Rawson", email = "rawsonkara@gmail.com"}
+]
+keywords = ["curriculum-designer", "education", "AI", "web-crawling", "data-integration"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+
+dependencies = [
+    "PyQt6>=6.5.0",
+    "requests>=2.28.0",
+    "beautifulsoup4>=4.11.0",
+    "ollama>=0.4.7",
+    "asyncio>=3.4.3"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.2.0",
+    "flake8>=6.0.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/p3nGu1nZz/osyllabi"
+"Bug Tracker" = "https://github.com/p3nGu1nZz/osyllabi/issues"
+"Repository" = "https://github.com/p3nGu1nZz/osyllabi.git"
+
+[project.scripts]
+osyllabi = "osyllabi.main:main"
+
+[tool.setuptools]
+packages = ["osyllabi"]
+include-package-data = true
+zip-safe = false
