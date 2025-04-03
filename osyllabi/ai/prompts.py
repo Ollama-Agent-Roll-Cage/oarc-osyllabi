@@ -15,7 +15,6 @@ from osyllabi.utils.log import log
 from osyllabi.utils.decorators.singleton import singleton
 
 
-@singleton
 class PromptTemplate:
     """
     Handles template-based prompts for AI requests.
@@ -138,6 +137,9 @@ class PromptTemplate:
         "system": "1.0"
     }
     
+    # Dictionary to cache template instances by name
+    _template_instances = {}
+    
     def __init__(self, template_text: Optional[str] = None, template_name: Optional[str] = None):
         """
         Initialize a prompt template.
@@ -186,6 +188,10 @@ class PromptTemplate:
         Raises:
             ValueError: If template_name is not a valid preset
         """
+        # Check if we already have a cached instance
+        if template_name in cls._template_instances:
+            return cls._template_instances[template_name]
+            
         template_map = {
             'overview': cls.OVERVIEW_TEMPLATE,
             'learning_path': cls.LEARNING_PATH_TEMPLATE,
@@ -201,6 +207,9 @@ class PromptTemplate:
             
         template = cls(template_map[template_name], template_name)
         template.version = cls.TEMPLATE_VERSIONS.get(template_name, "1.0")
+        
+        # Cache the template instance
+        cls._template_instances[template_name] = template
         
         log.debug(f"Created template from preset '{template_name}' (v{template.version})")
         return template

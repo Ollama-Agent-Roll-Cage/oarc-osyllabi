@@ -9,6 +9,7 @@ from osyllabi.utils.log import log
 from osyllabi.utils.utils import check_for_ollama
 from osyllabi.utils.decorators.singleton import singleton
 from osyllabi.utils.decorators.retry import retry
+from osyllabi.config import AI_CONFIG
 
 
 @singleton
@@ -20,13 +21,17 @@ class OllamaClient:
     using locally running Ollama models.
     """
     
-    def __init__(self, base_url: str = "http://localhost:11434", default_model: str = "llama2"):
+    def __init__(
+        self, 
+        base_url: Optional[str] = None, 
+        default_model: Optional[str] = None
+    ):
         """
         Initialize the Ollama client.
         
         Args:
-            base_url: Base URL for the Ollama API
-            default_model: Default model to use for requests
+            base_url: Base URL for the Ollama API (defaults to config value)
+            default_model: Default model to use for requests (defaults to config value)
             
         Raises:
             RuntimeError: If Ollama server is not available
@@ -34,9 +39,15 @@ class OllamaClient:
         # Verify Ollama is available - raise error if not
         check_for_ollama(raise_error=True)
         
-        self.base_url = base_url.rstrip('/')
-        self.default_model = default_model
-        log.info(f"Initialized Ollama client with base URL: {base_url}")
+        # Use config values if parameters are not provided
+        self.base_url = (base_url or AI_CONFIG['ollama_api_url']).rstrip('/')
+        self.default_model = default_model or AI_CONFIG['default_model']
+        
+        # Default parameters from config
+        self.default_temperature = AI_CONFIG['temperature']
+        self.default_max_tokens = AI_CONFIG['max_tokens']
+        
+        log.info(f"Initialized Ollama client with model {self.default_model} at {self.base_url}")
 
     def _verify_server(self) -> bool:
         """
@@ -63,8 +74,8 @@ class OllamaClient:
         prompt: str, 
         model: Optional[str] = None,
         system: Optional[str] = None,
-        temperature: float = 0.7, 
-        max_tokens: int = 1000,
+        temperature: Optional[float] = None, 
+        max_tokens: Optional[int] = None,
         stream: bool = False
     ) -> Union[str, Generator[str, None, None]]:
         """
@@ -89,40 +100,43 @@ class OllamaClient:
             raise ValueError("Prompt cannot be empty")
             
         model_name = model or self.default_model
+        temp = temperature if temperature is not None else self.default_temperature
+        tokens = max_tokens if max_tokens is not None else self.default_max_tokens
         
-        # Build request payload
+        # Build request payload - Use the chat endpoint instead of generate
         payload = {
             "model": model_name,
-            "prompt": prompt,
-            "temperature": temperature,
-            "num_predict": max_tokens,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": temp,
+            "num_predict": tokens,
             "stream": stream
         }
         
         # Add system prompt if provided
         if system:
-            payload["system"] = system
+            payload["messages"].insert(0, {"role": "system", "content": system})
             
-        endpoint = f"{self.base_url}/api/generate"
+        # Use the chat endpoint which is more reliable in Ollama
+        endpoint = f"{self.base_url}/api/chat"
         
         log.debug(f"Sending request to {endpoint} using model {model_name}")
         
         try:
             if stream:
-                return self._stream_response(endpoint, payload)
+                return self._stream_chat_response_as_text(endpoint, payload)
             else:
                 response = requests.post(endpoint, json=payload)
                 response.raise_for_status()
                 result = response.json()
-                return result.get("response", "").strip()
+                return result.get("message", {}).get("content", "").strip()
                 
         except requests.RequestException as e:
             log.error(f"API request failed: {e}")
             raise RuntimeError(f"Failed to generate text: {e}")
     
-    def _stream_response(self, endpoint: str, payload: Dict[str, Any]) -> Generator[str, None, None]:
+    def _stream_chat_response_as_text(self, endpoint: str, payload: Dict[str, Any]) -> Generator[str, None, None]:
         """
-        Stream response from the API.
+        Stream response from the chat API as text chunks.
         
         Args:
             endpoint: API endpoint
@@ -141,8 +155,8 @@ class OllamaClient:
             for line in response.iter_lines():
                 if line:
                     data = json.loads(line)
-                    if "response" in data:
-                        yield data["response"]
+                    if "message" in data and "content" in data["message"]:
+                        yield data["message"]["content"]
                         
         except requests.RequestException as e:
             log.error(f"Streaming API request failed: {e}")
@@ -153,8 +167,8 @@ class OllamaClient:
         self, 
         messages: List[Dict[str, str]], 
         model: Optional[str] = None,
-        temperature: float = 0.7, 
-        max_tokens: int = 1000,
+        temperature: Optional[float] = None, 
+        max_tokens: Optional[int] = None,
         stream: bool = False
     ) -> Union[Dict[str, Any], Generator[Dict[str, Any], None, None]]:
         """
@@ -182,13 +196,15 @@ class OllamaClient:
                 raise ValueError("Each message must be a dict with 'role' and 'content' keys")
                 
         model_name = model or self.default_model
+        temp = temperature if temperature is not None else self.default_temperature
+        tokens = max_tokens if max_tokens is not None else self.default_max_tokens
         
         # Build request payload
         payload = {
             "model": model_name,
             "messages": messages,
-            "temperature": temperature,
-            "num_predict": max_tokens,
+            "temperature": temp,
+            "num_predict": tokens,
             "stream": stream
         }
         

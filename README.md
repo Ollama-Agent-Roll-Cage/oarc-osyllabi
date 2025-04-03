@@ -109,4 +109,4 @@ For questions or support, please contact us at:
 
 - **Email**: <backrqqms@gmail.com>
 - **Discord**: [Join our Discord](https://discord.gg/2xpqjDUkHD)
-- **Issues**: [GitHub Issues](https://github.com/p3nGu1nZz/Osyllabus/issues)
+- **Issues**: [GitHub Issues](https://github.com/p3nGu1nZz/osyllabi/issues)

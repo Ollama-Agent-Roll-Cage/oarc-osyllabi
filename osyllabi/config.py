@@ -6,6 +6,7 @@ via environment variables for customizing application behavior.
 """
 import os
 from pathlib import Path
+from osyllabi.utils.const import DEFAULT_OLLAMA_URL, DEFAULT_MODEL
 
 # Base paths
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,6 +17,9 @@ AI_CONFIG = {
     'model': os.getenv('OSYLLABUS_AI_MODEL', 'gpt-4'),
     'temperature': float(os.getenv('OSYLLABUS_AI_TEMP', '0.7')),
     'max_tokens': int(os.getenv('OSYLLABUS_AI_MAX_TOKENS', '4000')),
+    # Ollama specific settings
+    'ollama_api_url': os.getenv('OSYLLABUS_OLLAMA_URL', DEFAULT_OLLAMA_URL),
+    'default_model': os.getenv('OSYLLABUS_OLLAMA_MODEL', DEFAULT_MODEL),
 }
 
 # Search Configuration
