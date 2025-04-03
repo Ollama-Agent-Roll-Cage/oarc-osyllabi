@@ -77,7 +77,7 @@ This project is licensed under the [Apache 2.0 License](LICENSE)
 Please use the following BibTeX entry to cite this project:
 
 ```bibtex
-@software{osyllabus,
+@software{osyllabi,
   author = {Kara Rawson},
   title = {Osyllabi: A streamlined Python app for designing personalized curriculums using AI, web crawling, and data integration.},
   year = {2025},
