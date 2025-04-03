@@ -1,11 +1,9 @@
 """
 Path management utilities for Osyllabi.
 """
-import os
-import sys
 import tempfile
 from pathlib import Path
-from typing import List, Optional, Union, Dict
+from typing import List, Union
 
 from osyllabi.utils.utils import sanitize_filename
 from osyllabi.config import SUPPORTED_FILE_EXTENSIONS

@@ -1,8 +1,6 @@
 """
 Curriculum generation functionality.
 """
-import os
-import sys
 import json
 import argparse
 from typing import List, Optional, Union, Tuple
