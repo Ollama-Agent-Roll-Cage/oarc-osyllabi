@@ -1,16 +1,15 @@
 """
 Embedding generation for vector representations of text.
 """
-import hashlib
-from typing import Dict, List, Any, Optional, Set
+import time
+from typing import Any, Dict, List
 
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-import requests
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from osyllabi.utils.log import log
-from osyllabi.utils.decorators.singleton import singleton
 from osyllabi.ai.client import OllamaClient
-
+from osyllabi.utils.decorators.singleton import singleton
+from osyllabi.utils.utils import check_for_ollama
+from osyllabi.utils.log import log
 
 @singleton
 class EmbeddingGenerator:

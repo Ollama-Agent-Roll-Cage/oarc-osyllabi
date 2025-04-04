@@ -9,7 +9,9 @@ import uuid
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 
-from osyllabi.utils.log import log
+from osyllabi.utils.log import (
+    log, INFO, with_context, log_at_level
+)
 
 
 class Agent(abc.ABC):
@@ -181,18 +183,10 @@ class Agent(abc.ABC):
             activity: Activity description
             level: Log level (debug, info, warning, error)
         """
-        log_message = f"Agent '{self.name}': {activity}"
+        with with_context(agent=self.name, session=self.session_id):
+            log_at_level(getattr(log, level.upper(), INFO), activity)
         
-        if level == "debug":
-            log.debug(log_message)
-        elif level == "warning":
-            log.warning(log_message)
-        elif level == "error":
-            log.error(log_message)
-        else:
-            log.info(log_message)
-            
-        # Update agent state
+        # Update activity timestamp and history
         self.state["last_active"] = datetime.now()
         self._add_to_history("activity_logged", {"message": activity, "level": level})
     

@@ -167,30 +167,30 @@ log = setup_logger(
 )
 
 # Add module-level functions that delegate to the singleton
-def debug(msg: str, *args, **kwargs):
-    """Log a debug message."""
-    log.debug(msg, *args, **kwargs)
-    
-def info(msg: str, *args, **kwargs):
-    """Log an info message."""
-    log.info(msg, *args, **kwargs)
-    
-def warning(msg: str, *args, **kwargs):
-    """Log a warning message."""
-    log.warning(msg, *args, **kwargs)
+def log_at_level(level: int, msg: str, *args, **kwargs) -> None:
+    """Log a message at a specific level."""
+    log.log(level, msg, *args, **kwargs)
 
-def warn(msg: str, *args, **kwargs):
-    """Log a warning message (alias for warning)."""
-    log.warning(msg, *args, **kwargs)
-    
-def error(msg: str, *args, **kwargs):
+def debug(msg: str, *args, **kwargs) -> None:
+    """Log a debug message."""
+    log_at_level(DEBUG, msg, *args, **kwargs)
+
+def info(msg: str, *args, **kwargs) -> None:
+    """Log an info message."""
+    log_at_level(INFO, msg, *args, **kwargs)
+
+def warning(msg: str, *args, **kwargs) -> None:
+    """Log a warning message."""
+    log_at_level(WARNING, msg, *args, **kwargs)
+
+def error(msg: str, *args, **kwargs) -> None:
     """Log an error message."""
-    log.error(msg, *args, **kwargs)
-    
-def critical(msg: str, *args, **kwargs):
+    log_at_level(ERROR, msg, *args, **kwargs)
+
+def critical(msg: str, *args, **kwargs) -> None:
     """Log a critical message."""
-    log.critical(msg, *args, **kwargs)
-    
+    log_at_level(CRITICAL, msg, *args, **kwargs)
+
 def set_context(**kwargs):
     """Set context values for the current thread."""
     log.set_context(**kwargs)

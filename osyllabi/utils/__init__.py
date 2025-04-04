@@ -1,15 +1,25 @@
 """
-Utility modules for Osyllabi.
+Utilities package for Osyllabi
 """
 
-from osyllabi.utils.const import SUCCESS, FAILURE
+# Import directly from tenacity
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+# Import other utilities from utils module
 from osyllabi.utils.utils import (
-    safe_to_int, safe_to_float,
-    find_files_by_extensions, get_app_dirs, get_system_info,
-    retry, get_timestamp, sanitize_filename, 
-    detect_gpu, upgrade_faiss_to_gpu, check_faiss_gpu_capability,
+    safe_to_int,
+    safe_to_float,
+    find_files_by_extensions,
+    get_app_dirs,
+    get_system_info,
+    get_timestamp,
+    sanitize_filename,
+    detect_gpu,
+    upgrade_faiss_to_gpu,
+    check_faiss_gpu_capability,
     check_for_ollama,
 )
+from osyllabi.utils.const import SUCCESS, FAILURE
 from osyllabi.utils.paths import (
     ensure_directory, get_project_root, get_temp_directory,
     get_output_directory, create_unique_file_path,

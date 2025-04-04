@@ -8,7 +8,10 @@ import tempfile
 import subprocess
 from pathlib import Path
 from datetime import datetime
-from typing import Any, List, Dict, Union, TypeVar, Callable, Tuple, Optional
+from typing import Any, List, Dict, Union, TypeVar, Tuple, Optional
+
+# Import and explicitly re-export retry
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from osyllabi.utils.log import log
 

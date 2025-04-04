@@ -1,73 +1,80 @@
 """
-Ollama API client for interacting with local large language models.
+AI client for interfacing with Ollama models.
 """
 import json
-import requests
-from typing import Dict, Any, Optional, List, Union, Generator
+import time
+from typing import Any, Dict, List, Optional, Union, Generator
 
+import requests
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from osyllabi.utils.log import log
-from osyllabi.utils.utils import check_for_ollama
 from osyllabi.utils.decorators.singleton import singleton
 from osyllabi.config import AI_CONFIG
-
 
 @singleton
 class OllamaClient:
     """
-    Client for making requests to Ollama API.
+    Client for interacting with Ollama API.
     
-    This client provides methods to generate text, chat completions, and embeddings
-    using locally running Ollama models.
+    This class provides methods for generating text completions and
+    embeddings using Ollama's local API.
     """
     
+    @classmethod
+    def validate_ollama(cls) -> None:
+        """Validate Ollama availability."""
+        from osyllabi.utils.utils import check_for_ollama
+        check_for_ollama(raise_error=True)
+        
     def __init__(
-        self, 
-        base_url: Optional[str] = None, 
-        default_model: Optional[str] = None
+        self,
+        base_url: Optional[str] = None,
+        default_model: Optional[str] = None,
+        default_temperature: Optional[float] = None,
+        default_max_tokens: Optional[int] = None
     ):
         """
         Initialize the Ollama client.
         
         Args:
-            base_url: Base URL for the Ollama API (defaults to config value)
-            default_model: Default model to use for requests (defaults to config value)
+            base_url: Base URL for Ollama API
+            default_model: Default model to use for requests
+            default_temperature: Default temperature for generation
+            default_max_tokens: Default maximum tokens for generation
             
         Raises:
             RuntimeError: If Ollama server is not available
         """
-        # Verify Ollama is available - raise error if not
-        check_for_ollama(raise_error=True)
+        # Call class method through the class to ensure proper mocking
+        OllamaClient.validate_ollama()  # Change from self.validate_ollama()
         
-        # Use config values if parameters are not provided
-        self.base_url = (base_url or AI_CONFIG['ollama_api_url']).rstrip('/')
-        self.default_model = default_model or AI_CONFIG['default_model']
+        # Use configuration values or defaults
+        self.base_url = base_url or AI_CONFIG.get('ollama_api_url', 'http://localhost:11434')
+        self.default_model = default_model or AI_CONFIG.get('default_model', 'llama3')
+        self.default_temperature = default_temperature if default_temperature is not None else AI_CONFIG.get('temperature', 0.7)
+        self.default_max_tokens = default_max_tokens if default_max_tokens is not None else AI_CONFIG.get('max_tokens', 1000)
         
-        # Default parameters from config
-        self.default_temperature = AI_CONFIG['temperature']
-        self.default_max_tokens = AI_CONFIG['max_tokens']
-        
-        log.info(f"Initialized Ollama client with model {self.default_model} at {self.base_url}")
+        # Validate server connection
+        self._validate_server()
 
-    def _verify_server(self) -> bool:
+    def _validate_server(self) -> None:
         """
-        Verify that the Ollama server is running and accessible.
+        Validate connection to Ollama server.
         
-        Returns:
-            bool: True if server is accessible, False otherwise
+        Raises:
+            RuntimeError: If server is not available
         """
         try:
-            response = requests.get(f"{self.base_url}")
-            if response.status_code == 200:
-                log.debug("Ollama server is accessible")
-                return True
-            else:
-                log.warning(f"Ollama server returned status code: {response.status_code}")
-                return False
+            response = requests.get(self.base_url, timeout=5)
+            if response.status_code != 200:
+                raise RuntimeError(f"Ollama server returned unexpected status: {response.status_code}")
+                
+            log.info(f"Successfully connected to Ollama server at {self.base_url}")
         except requests.RequestException as e:
-            log.error(f"Failed to connect to Ollama server: {e}")
-            return False
+            error_msg = f"Failed to connect to Ollama server at {self.base_url}: {e}"
+            log.error(error_msg)
+            raise RuntimeError(error_msg)
 
     @retry(
         stop=stop_after_attempt(3),

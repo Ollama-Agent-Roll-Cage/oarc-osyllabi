@@ -5,14 +5,13 @@ This module provides advanced vector mathematics operations using scikit-learn
 and other libraries to support retrieval-augmented generation capabilities.
 """
 import numpy as np
-from typing import List, Union, Optional, Tuple, Any
+from typing import Any, List, Optional, Tuple, Union
 
-from osyllabi.utils.log import log
-
-# Use scikit-learn's efficient implementations
+from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity as sk_cosine_similarity
 from sklearn.preprocessing import normalize as sk_normalize
-from sklearn.decomposition import PCA
+
+from osyllabi.utils.log import log
 
 # Import FAISS directly - __init__.py handles GPU acceleration
 import faiss
