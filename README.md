@@ -22,7 +22,7 @@ python -m venv .venv
 .venv\Scripts\activate # On Linux: source venv/bin/activate 
 
 # Install dependencies
-pip install -e .
+pip install -e . # For development: 'pip install -e .[dev]'
 ```
 
 ## Requirements

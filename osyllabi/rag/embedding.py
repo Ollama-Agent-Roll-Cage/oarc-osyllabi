@@ -2,6 +2,7 @@
 Embedding generation for vector representations of text.
 """
 import time
+import asyncio
 from typing import Any, Dict, List
 
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -52,21 +53,26 @@ class EmbeddingGenerator:
         
         # Verify model exists and can generate embeddings
         try:
-            self.client.embed("test", model=self.model_name)
+            # Create an event loop if one doesn't exist
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+            # Test embedding generation
+            loop.run_until_complete(self._test_embedding())
             log.info(f"Successfully connected to Ollama embedding API with model {self.model_name}")
         except Exception as e:
             log.error(f"Failed to generate embeddings with model {self.model_name}: {e}")
             raise RuntimeError(f"Model {self.model_name} is not available or cannot generate embeddings")
+    
+    async def _test_embedding(self) -> None:
+        """Test embedding generation to verify model capability."""
+        embedding = await self.client.embed("test", model=self.model_name)
+        self._embedding_dim = len(embedding)
+        log.debug(f"Embedding dimension: {self._embedding_dim}")
         
-        # Determine embedding dimensions by testing
-        try:
-            self._embedding_dim = len(self.client.embed("test", model=self.model_name))
-            log.debug(f"Embedding dimension: {self._embedding_dim}")
-        except Exception:
-            # Use default dimension
-            self._embedding_dim = 4096
-            log.warning(f"Couldn't determine embedding dimension, using default: {self._embedding_dim}")
-            
     @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=4), retry=retry_if_exception_type(Exception))
     def embed_texts(self, texts: List[str]) -> List[List[float]]:
         """
@@ -109,7 +115,17 @@ class EmbeddingGenerator:
         # Generate embeddings for uncached texts
         if uncached_texts:
             try:
-                embeddings = self.client.embed_batch(uncached_texts, model=self.model_name)
+                # Create an event loop if one doesn't exist
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    
+                # Generate embeddings
+                embeddings = loop.run_until_complete(
+                    self.client.embed_batch(uncached_texts, model=self.model_name)
+                )
                 
                 # Update results and cache
                 for i, embedding in zip(uncached_indices, embeddings):
@@ -158,7 +174,17 @@ class EmbeddingGenerator:
             self._cache_misses += 1
             
         try:
-            embedding = self.client.embed(text, model=self.model_name)
+            # Create an event loop if one doesn't exist
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+            # Generate embedding
+            embedding = loop.run_until_complete(
+                self.client.embed(text, model=self.model_name)
+            )
             
             # Add to cache if enabled
             if self.cache_embeddings:
