@@ -22,7 +22,8 @@ from osyllabi.generator.resource.extractor import ContentExtractorABC
 
 # Import optional dependencies
 try:
-    from langchain.document_loaders import (
+    # Update to new LangChain import paths
+    from langchain_community.document_loaders import (
         TextLoader, 
         UnstructuredMarkdownLoader,
         UnstructuredHTMLLoader, 
@@ -480,7 +481,8 @@ class PDFExtractor(EnhancedFileExtractor):
     def _load_with_langchain(self, file_path):
         """Load PDF with LangChain's PyPDFLoader."""
         if LANGCHAIN_AVAILABLE:
-            from langchain.document_loaders import PyPDFLoader
+            # Update the import to use langchain_community
+            from langchain_community.document_loaders import PyPDFLoader
             loader = PyPDFLoader(str(file_path))
             return loader.load()
         return []

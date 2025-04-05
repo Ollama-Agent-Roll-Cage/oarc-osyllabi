@@ -112,7 +112,7 @@ class OllamaClient:
         retry=retry_if_exception_type(Exception),
         reraise=True
     )
-    async def generate(
+    async def async_generate(
         self, 
         prompt: str, 
         model: Optional[str] = None,
@@ -123,7 +123,7 @@ class OllamaClient:
         callback: Optional[Callable[[str], None]] = None  # Parameter kept for compatibility, but not used
     ) -> str:
         """
-        Generate a completion from a prompt using chat API.
+        Generate a completion from a prompt using chat API (async version).
         
         Args:
             prompt: The prompt to generate from
@@ -435,71 +435,6 @@ class OllamaClient:
             log.error(f"Failed to pull model {model}: {e}")
             raise RuntimeError(f"Failed to pull model: {e}")
 
-    # Rename the async generate method to avoid naming conflict
-    async def async_generate(
-        self, 
-        prompt: str, 
-        model: Optional[str] = None,
-        system: Optional[str] = None,
-        temperature: Optional[float] = None, 
-        max_tokens: Optional[int] = None,
-        stream: bool = False,
-        callback: Optional[Callable[[str], None]] = None
-    ) -> str:
-        """
-        Generate a completion from a prompt using chat API (async version).
-        
-        Args:
-            prompt: The prompt to generate from
-            model: Model to use (defaults to client's default_model)
-            system: Optional system prompt for context
-            temperature: Controls randomness (0-1)
-            max_tokens: Maximum tokens to generate
-            stream: Not used - always set to False
-            callback: Not used
-            
-        Returns:
-            The generated text
-            
-        Raises:
-            ValueError: If the prompt is empty
-            RuntimeError: On API errors
-        """
-        if not prompt:
-            raise ValueError("Prompt cannot be empty")
-        
-        # Convert parameters to chat format
-        messages = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
-        
-        # Get model parameters
-        model_name = model or self.default_model
-        temp = temperature if temperature is not None else self.default_temperature
-        num_predict = max_tokens or self.default_max_tokens
-        
-        try:
-            # Use the ollama library's chat method
-            response = await self.client.chat(
-                model=model_name,
-                messages=messages,
-                options={
-                    "temperature": temp,
-                    "num_predict": num_predict
-                }
-            )
-            
-            # Extract content from chat response
-            if response and "message" in response and "content" in response["message"]:
-                return response["message"]["content"].strip()
-            return ""
-                
-        except Exception as e:
-            log.error(f"Failed to generate text: {e}")
-            return f"Error generating text: {e}"
-
-    # Make the sync generate method a wrapper for the async version
     def generate(
         self, 
         prompt: str, 
@@ -523,7 +458,7 @@ class OllamaClient:
         Returns:
             Generated text
         """
-        # Run the async method in a new event loop if needed
+        # Call the async_generate method
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
@@ -532,7 +467,7 @@ class OllamaClient:
                 try:
                     return new_loop.run_until_complete(
                         self.async_generate(prompt, model=model, system=system, 
-                                           temperature=temperature, max_tokens=max_tokens)
+                                   temperature=temperature, max_tokens=max_tokens)
                     )
                 finally:
                     new_loop.close()
@@ -540,7 +475,7 @@ class OllamaClient:
                 # Use the existing loop
                 return loop.run_until_complete(
                     self.async_generate(prompt, model=model, system=system, 
-                                      temperature=temperature, max_tokens=max_tokens)
+                               temperature=temperature, max_tokens=max_tokens)
                 )
         except RuntimeError:
             # No event loop in thread, create one
@@ -549,7 +484,7 @@ class OllamaClient:
             try:
                 return loop.run_until_complete(
                     self.async_generate(prompt, model=model, system=system, 
-                                      temperature=temperature, max_tokens=max_tokens)
+                               temperature=temperature, max_tokens=max_tokens)
                 )
             finally:
                 loop.close()

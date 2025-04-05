@@ -36,9 +36,10 @@ class TestOllamaClient(unittest.TestCase):
         }
         mock_chat.return_value = chat_result
         
-        # Initialize client and generate text
+        # Initialize client and generate text - use the async method directly
         client = OllamaClient()
-        result = self.loop.run_until_complete(client.generate("Test prompt"))
+        # Run the async generate method
+        result = self.loop.run_until_complete(client.async_generate("Test prompt"))
         
         # Assert response was processed correctly
         self.assertEqual(result, "Generated text response")
