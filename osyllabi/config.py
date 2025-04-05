@@ -18,8 +18,8 @@ AI_CONFIG = {
     'temperature': float(os.getenv('OSYLLABUS_AI_TEMP', '0.7')),
     'max_tokens': int(os.getenv('OSYLLABUS_AI_MAX_TOKENS', '4000')),
     # Ollama specific settings
-    'ollama_api_url': os.getenv('OSYLLABUS_OLLAMA_URL', DEFAULT_OLLAMA_URL),
-    'default_model': os.getenv('OSYLLABUS_OLLAMA_MODEL', DEFAULT_MODEL),
+    'ollama_api_url': 'http://localhost:11434',
+    'default_model': 'llama3.1:latest',  # Updated from 'llama3' to 'llama3.1:latest'
 }
 
 # Search Configuration

@@ -57,7 +57,7 @@ class OllamaClient:
         # Use configuration values or defaults
         self.base_url = base_url or AI_CONFIG.get('ollama_api_url', 'http://localhost:11434')
         self.api_url = f"{self.base_url}/api"  # Add this line to create api_url attribute
-        self.default_model = default_model or AI_CONFIG.get('default_model', 'llama3')
+        self.default_model = default_model or AI_CONFIG.get('default_model', 'llama3.1:latest')
         self.default_temperature = default_temperature if default_temperature is not None else AI_CONFIG.get('temperature', 0.7)
         self.default_max_tokens = 4000  # Always use 4000 as default max_tokens
         

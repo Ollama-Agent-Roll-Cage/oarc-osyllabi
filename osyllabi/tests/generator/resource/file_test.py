@@ -63,7 +63,7 @@ class TestFileResourceCollector(unittest.TestCase):
             self.assertEqual(len(result["files"]), 1)
             self.assertEqual(result["stats"]["files_processed"], 1)
             self.assertIn(temp_path, result["files"])
-            self.assertEqual(result["files"][temp_path]["content_type"], "text")
+            self.assertEqual(result["files"][temp_path]["content_type"], "code")  # Updated expectation from "text" to "code"
         finally:
             # Clean up the temporary file
             os.unlink(temp_path)

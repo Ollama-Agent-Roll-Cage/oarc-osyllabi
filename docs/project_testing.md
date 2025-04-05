@@ -223,6 +223,51 @@ sequenceDiagram
    ollama pull llama3:latest
    ```
 
+### Testing Model Availability
+
+Before running tests that require specific Ollama models:
+
+1. Check your installed models:
+
+   ```bash
+   ollama list
+   ```
+
+2. Install required models if they're missing:
+
+   ```bash
+   # Install our default model
+   ollama pull llama3.1:latest
+   ```
+
+3. Run model availability tests:
+
+   ```bash
+   # Run with --live flag to test against a real Ollama instance
+   pytest osyllabi/tests/ai/model_availability_test.py --live
+   ```
+
+4. If you see errors about model not found, ensure you've updated your config to use available models:
+
+   ```python
+   # In osyllabi/config.py
+   AI_CONFIG = {
+       'default_model': 'llama3.1:latest',
+       # Other config options...
+   }
+   ```
+
+5. To create tests that only run with the `--live` flag, use the `live_only` marker:
+
+   ```python
+   import pytest
+   
+   @pytest.mark.live_only
+   def test_requires_live_ollama():
+       """This test only runs when --live flag is provided."""
+       # Your test code that requires a live Ollama instance
+   ```
+
 ## Writing New Tests
 
 Follow these guidelines when creating new tests:

@@ -1,7 +1,7 @@
 ---
 title: ML Fundamentals
 topic: Machine Learning
-created: 2025-04-05T17:27:59.861608
+created: 2025-04-05T17:45:36.418505
 ---
 
 # Machine Learning Curriculum (Beginner Level)
@@ -26,6 +26,6 @@ Error generating text: model "llama3" not found, try pulling it first (status co
 
 - Topic: Machine Learning
 - Skill Level: Beginner
-- Generation Time: 0.49 seconds
+- Generation Time: 0.56 seconds
 - Model: llama3
 - Resources Used: 10
