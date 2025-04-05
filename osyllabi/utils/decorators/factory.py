@@ -41,7 +41,11 @@ def factory(cls: Type[T]) -> Type[T]:
         """
         # Special handling for the 'args' parameter which is expected by _process_args
         if 'args' in kwargs and len(args) == 0:
-            return cls(args=kwargs['args'])
+            instance = cls(args=kwargs['args'])
+            # If instance has a _result attribute, return that instead
+            if hasattr(instance, '_result') and instance._result is not None:
+                return instance._result
+            return instance
             
         instance = cls(*args, **kwargs)
         

@@ -1,6 +1,7 @@
 """
 Curriculum generation functionality.
 """
+import time
 import json
 import argparse
 from pathlib import Path
@@ -13,6 +14,8 @@ from osyllabi.utils.const import SUCCESS, FAILURE
 from osyllabi.utils.paths import get_output_directory, create_unique_file_path
 from osyllabi.utils.decorators.factory import factory
 from osyllabi.generator.workflow import CurriculumWorkflow
+from osyllabi.rag.engine import RAGEngine
+from osyllabi.rag.rag_agent import RAGAgent
 
 
 @factory
@@ -230,20 +233,22 @@ class Curriculum:
         """
         from osyllabi.generator.workflow import CurriculumWorkflow
         from osyllabi.rag.rag_agent import RAGAgent
+        from osyllabi.rag.engine import RAGEngine
         
         workflow = CurriculumWorkflow(
             topic=topic,
             skill_level=skill_level
         )
         
-        # Initialize RAG agent
+        # Create a RAG engine for this operation
+        rag_engine = RAGEngine(run_id=f"llama_index_{int(time.time())}")
+        
+        # Initialize RAG agent - use the model directly
         agent = RAGAgent(
             name="LlamaIndex_Curriculum", 
-            model=workflow.get_model_name()
+            model=workflow.model,  # Use the model attribute directly
+            rag_engine=rag_engine  # Pass the RAG engine directly
         )
-        
-        # Set RAG engine to the workflow's engine
-        agent.set_rag_engine(workflow.rag_engine)
         
         # Use standard retrieval for curriculum components
         curriculum_sections = [

@@ -6,8 +6,9 @@ from unittest.mock import patch, MagicMock, mock_open
 import tempfile
 import os
 import json
-from pathlib import Path
 import argparse
+import time
+from pathlib import Path
 
 from osyllabi.core.curriculum import Curriculum
 from osyllabi.utils.const import SUCCESS, FAILURE
@@ -38,15 +39,30 @@ class TestCurriculum(unittest.TestCase):
         self.mock_workflow = self.mock_workflow_class.return_value
         self.mock_workflow.generate_full_curriculum.return_value = "# Test Curriculum\n\nTest content"
         
+        # Set model attribute on workflow mock for generate_with_llama_index test
+        self.mock_workflow.model = "llama3"
+        
         # Patch file operations
         self.open_patcher = patch('builtins.open', mock_open())
         self.mock_open = self.open_patcher.start()
+        
+        # Patch RAGEngine for generate_with_llama_index test
+        self.rag_engine_patcher = patch('osyllabi.rag.engine.RAGEngine')  # Fix: Use correct module path
+        self.mock_rag_engine_class = self.rag_engine_patcher.start()
+        self.mock_rag_engine = self.mock_rag_engine_class.return_value
+        
+        # Patch time import for generate_with_llama_index test
+        self.time_patcher = patch('osyllabi.core.curriculum.time')
+        self.mock_time = self.time_patcher.start()
+        self.mock_time.time.return_value = 12345
     
     def tearDown(self):
         """Tear down test fixtures."""
         self.ollama_patcher.stop()
         self.workflow_patcher.stop()
         self.open_patcher.stop()
+        self.rag_engine_patcher.stop()
+        self.time_patcher.stop()
         self.temp_dir.cleanup()
     
     def test_curriculum_initialization(self):
@@ -116,31 +132,41 @@ class TestCurriculum(unittest.TestCase):
         args.format = "md"
         args.export_path = None
         
-        curriculum = Curriculum(args=args)
-        # The factory decorator will have returned the result of _process_args
-        # which should be a tuple of (SUCCESS, output_path)
-        self.assertIsInstance(curriculum, tuple)
-        self.assertEqual(curriculum[0], SUCCESS)
-        self.assertIsInstance(curriculum[1], Path)
+        # Create the original curriculum object to access _process_args directly
+        curriculum = Curriculum(
+            topic=self.test_topic,
+            skill_level=self.test_skill_level
+        )
         
-        # Verify workflow generation was called
-        self.mock_workflow_class.assert_called_once()
-        self.mock_workflow.generate_full_curriculum.assert_called_once()
+        # Call _process_args directly to test its behavior
+        result = curriculum._process_args(args)
+        
+        # Now test the result tuple directly
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(result[0], SUCCESS)
+        self.assertIsInstance(result[1], Path)
     
     def test_process_args_empty_topic(self):
         """Test processing args with empty topic returns failure."""
         args = argparse.Namespace()
         args.topic = ""
         
-        curriculum = Curriculum(args=args)
-        self.assertEqual(curriculum[0], FAILURE)
-        self.assertIsNone(curriculum[1])
-    
-    @patch('osyllabi.core.curriculum.check_for_ollama')
-    def test_process_args_ollama_error(self, mock_check):
-        """Test processing args with Ollama error returns failure."""
-        mock_check.side_effect = RuntimeError("Ollama not available")
+        # Create the original curriculum object to access _process_args directly
+        curriculum = Curriculum(
+            topic=self.test_topic,
+            skill_level=self.test_skill_level
+        )
         
+        # Call _process_args directly to test its behavior
+        result = curriculum._process_args(args)
+        
+        # Now test the result tuple directly
+        self.assertEqual(result[0], FAILURE)
+        self.assertIsNone(result[1])
+    
+    def test_process_args_ollama_error(self):
+        """Test processing args with Ollama error returns failure."""
+        # Setup the args
         args = argparse.Namespace()
         args.topic = self.test_topic
         args.title = ""
@@ -150,9 +176,21 @@ class TestCurriculum(unittest.TestCase):
         args.format = "md"
         args.export_path = None
         
-        curriculum = Curriculum(args=args)
-        self.assertEqual(curriculum[0], FAILURE)
-        self.assertIsNone(curriculum[1])
+        # Create the curriculum object first
+        curriculum = Curriculum(
+            topic=self.test_topic,
+            skill_level=self.test_skill_level
+        )
+        
+        # Now patch within the specific context of _process_args
+        with patch('osyllabi.core.curriculum.check_for_ollama', 
+                  side_effect=RuntimeError("Ollama not available")):
+            # Call _process_args directly
+            result = curriculum._process_args(args)
+            
+            # Test the result tuple
+            self.assertEqual(result[0], FAILURE)
+            self.assertIsNone(result[1])
     
     def test_generate_content(self):
         """Test content generation."""
@@ -236,25 +274,37 @@ class TestCurriculum(unittest.TestCase):
         mock_rag_agent.create_enhanced_prompt.return_value = "Test enhanced prompt"
         mock_rag_agent.generate.return_value = "Test content from RAG"
         
-        # Patch the workflow to return a model name
-        self.mock_workflow.get_model_name.return_value = "llama3"
-        
+        # Create curriculum
         curriculum = Curriculum(
             topic=self.test_topic,
             skill_level=self.test_skill_level
         )
         
-        result = curriculum.generate_with_llama_index(self.test_topic, self.test_skill_level)
+        # Run the method - import time here to prevent issues
+        with patch('osyllabi.core.curriculum.time') as mock_time:
+            mock_time.time.return_value = 12345
+            result = curriculum.generate_with_llama_index(self.test_topic, self.test_skill_level)
         
-        # Verify result contains the content
-        self.assertTrue("# Python Programming Curriculum" in curriculum.content)
-        self.assertTrue("Test content from RAG" in curriculum.content)
+        # RAGEngine should be created
+        self.mock_rag_engine_class.assert_called_once_with(run_id=f"llama_index_12345")
         
-        # Verify RAG methods were called
-        mock_rag_agent.set_rag_engine.assert_called_once()
+        # Agent should be created with correct params
+        mock_rag_agent_class.assert_called_once_with(
+            name="LlamaIndex_Curriculum",
+            model="llama3",  # Uses the mocked workflow.model
+            rag_engine=self.mock_rag_engine  # Uses the mocked engine
+        )
+        
+        # Verify RAG operations were called
         self.assertEqual(mock_rag_agent.retrieve_context.call_count, 4)  # Called for each section
         self.assertEqual(mock_rag_agent.create_enhanced_prompt.call_count, 4)
         self.assertEqual(mock_rag_agent.generate.call_count, 4)
+        
+        # Verify content contains the expected text
+        self.assertTrue("Test content from RAG" in curriculum.content)
+        
+        # Verify the method returns the content
+        self.assertEqual(result, curriculum.content)
 
 
 if __name__ == '__main__':

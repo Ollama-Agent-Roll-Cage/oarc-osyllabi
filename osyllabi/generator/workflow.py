@@ -318,3 +318,12 @@ class CurriculumWorkflow:
         
         log.info(f"Completed full curriculum generation in {total_time:.2f}s")
         return curriculum
+    
+    def get_model_name(self) -> str:
+        """
+        Get the model name used by this workflow.
+        
+        Returns:
+            str: Model name
+        """
+        return self.model
