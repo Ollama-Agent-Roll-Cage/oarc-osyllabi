@@ -3,7 +3,6 @@ Curriculum generation functionality.
 """
 import json
 import argparse
-
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional, Union, Tuple
@@ -217,3 +216,76 @@ class Curriculum:
                 raise NotImplementedError(f"Unknown export {fmt} format")
         except IOError as e:
             raise IOError(f"Error writing to file {path}: {e}")
+    
+    def generate_with_llama_index(self, topic: str, skill_level: str = "Beginner") -> str:
+        """
+        Generate curriculum content using LlamaIndex capabilities.
+        
+        Args:
+            topic: The main topic
+            skill_level: Target skill level
+            
+        Returns:
+            Generated content
+        """
+        from osyllabi.generator.workflow import CurriculumWorkflow
+        from osyllabi.rag.rag_agent import RAGAgent
+        
+        workflow = CurriculumWorkflow(
+            topic=topic,
+            skill_level=skill_level
+        )
+        
+        # Initialize RAG agent
+        agent = RAGAgent(
+            name="LlamaIndex_Curriculum", 
+            model=workflow.get_model_name()
+        )
+        
+        # Set RAG engine to the workflow's engine
+        agent.set_rag_engine(workflow.rag_engine)
+        
+        # Use standard retrieval for curriculum components
+        curriculum_sections = [
+            ("overview", "Create a comprehensive introduction to this topic"),
+            ("learning_path", "Design a structured learning path with key milestones"),
+            ("resources", "Recommend essential learning resources"),
+            ("projects", "Suggest practical projects for skill development")
+        ]
+        
+        content_parts = []
+        for section_type, question in curriculum_sections:
+            try:
+                # Use regular context retrieval instead of PandasQueryEngine
+                context = agent.retrieve_context(
+                    topic=topic,
+                    query_type=section_type,
+                    skill_level=skill_level,
+                    expand_subtopics=True
+                )
+                
+                # Create enhanced prompt with context
+                prompt = agent.create_enhanced_prompt(
+                    base_prompt=f"{question} for {topic} at {skill_level} level",
+                    topic=topic,
+                    query_type=section_type,
+                    skill_level=skill_level
+                )
+                
+                # Generate content
+                response = agent.generate(prompt)
+                content_parts.append(f"## {section_type.replace('_', ' ').title()}\n\n{response}\n")
+                
+            except Exception as e:
+                log.warning(f"Failed to generate {section_type} with enhanced context: {e}")
+                # Fall back to regular generation
+                content_parts.append(workflow.generate_section(section_type))
+        
+        # Combine all parts into complete curriculum
+        self.content = "\n\n".join([
+            f"# {self.title}",
+            f"*Generated curriculum for {topic} at {skill_level} level*\n",
+            *content_parts
+        ])
+        
+        return self.content

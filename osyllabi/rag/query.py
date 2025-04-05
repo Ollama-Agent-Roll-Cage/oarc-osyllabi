@@ -8,6 +8,7 @@ import re
 from typing import List, Dict, Any, Optional
 
 from osyllabi.utils.log import log
+from llama_index.core.prompts import PromptTemplate as LlamaPromptTemplate
 
 
 class QueryFormulator:
@@ -63,6 +64,64 @@ class QueryFormulator:
             "data_science": ["analysis", "visualization", "statistics", "hypothesis", "correlation"],
             "design": ["user experience", "wireframes", "prototypes", "user interface", "accessibility"]
         }
+        
+        # Initialize LlamaIndex custom prompt templates
+        self.llama_prompt_templates = {}
+        self._setup_llama_templates()
+    
+    def _setup_llama_templates(self):
+        """Set up LlamaIndex custom prompt templates for advanced querying."""
+        try:
+            # Create custom templates for different query types
+            curriculum_template = """
+            Given a pandas DataFrame about {topic} for {skill_level} level, 
+            analyze the content and provide a structured curriculum with key 
+            concepts, learning path, and recommendations.
+            
+            DataFrame schema: {schema}
+            
+            Query: {query_str}
+            """
+            
+            resources_template = """
+            Given a pandas DataFrame about {topic} for {skill_level} level,
+            identify and list the most relevant learning resources, tools,
+            and references.
+            
+            DataFrame schema: {schema}
+            
+            Query: {query_str}
+            """
+            
+            self.llama_prompt_templates = {
+                "curriculum": LlamaPromptTemplate(curriculum_template),
+                "resources": LlamaPromptTemplate(resources_template)
+            }
+            
+            log.info("Initialized LlamaIndex prompt templates")
+        except Exception as e:
+            log.warning(f"Failed to initialize LlamaIndex templates: {e}")
+    
+    def get_llama_prompt_template(self, query_type: str):
+        """
+        Get LlamaIndex prompt template for a specific query type.
+        
+        Args:
+            query_type: Type of query
+            
+        Returns:
+            LlamaPromptTemplate or None if not available
+        """
+        # Map our query types to template types
+        template_map = {
+            "learning_path": "curriculum",
+            "resources": "resources",
+            "projects": "curriculum",
+            "overview": "curriculum"
+        }
+        
+        template_type = template_map.get(query_type, "curriculum")
+        return self.llama_prompt_templates.get(template_type)
     
     def formulate_query(
         self,
@@ -87,7 +146,8 @@ class QueryFormulator:
         domain = self._detect_domain(topic)
         
         # Get domain-specific template if available, otherwise use default
-        if domain and domain in self.topic_specific_templates and query_type in self.topic_specific_templates[domain]:
+        if (domain and domain in self.topic_specific_templates and 
+            query_type in self.topic_specific_templates[domain]):
             template = self.topic_specific_templates[domain][query_type]
         else:
             # Get base template

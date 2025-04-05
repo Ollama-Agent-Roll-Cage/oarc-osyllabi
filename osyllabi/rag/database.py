@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-import faiss  # Added to avoid AttributeError when tests patch faiss
 
 from osyllabi.utils.log import log
 from osyllabi.utils.vector.operations import cosine_similarity
@@ -28,13 +27,21 @@ class VectorDatabase:
     Stores documents, chunks, and embeddings for quick access.
     """
 
-    def __init__(self):
+    def __init__(self, db_path=None):
+        """
+        Initialize database.
+        
+        Args:
+            db_path: Optional path to database file (not used in in-memory implementation)
+        """
         # Each row will contain: doc_id, chunk_id, text, source, metadata, embedding (np.array)
         self.data = pd.DataFrame(columns=[
             "doc_id", "chunk_id", "text", "source", "metadata", "embedding"
         ])
         self._doc_counter = 0
         self._chunk_counter = 0
+        # Store path for potential future persistence
+        self.db_path = db_path
 
     def add_document(
         self,

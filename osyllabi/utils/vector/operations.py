@@ -12,42 +12,48 @@ from sklearn.metrics.pairwise import cosine_similarity as sk_cosine_similarity
 from sklearn.preprocessing import normalize as sk_normalize
 
 from osyllabi.utils.log import log
+from osyllabi.utils.deps import DependencyManager
 
-# Import FAISS directly - __init__.py handles GPU acceleration
+# Import FAISS directly
 import faiss
 
-# Access GPU capability flag from __init__
-from osyllabi.utils.vector import FAISS_GPU_ENABLED
+# Define GPU capability flag here directly
+FAISS_GPU_ENABLED = DependencyManager._is_faiss_gpu_installed()
 
 
-def cosine_similarity(vec1: Union[List[float], np.ndarray], 
-                     vec2: Union[List[float], np.ndarray]) -> float:
+def cosine_similarity(v1: Union[List[float], np.ndarray], v2: Union[List[float], np.ndarray]) -> float:
     """
-    Calculate cosine similarity between two vectors using scikit-learn.
+    Calculate cosine similarity between two vectors.
     
     Args:
-        vec1: First vector
-        vec2: Second vector
+        v1: First vector
+        v2: Second vector
         
     Returns:
-        float: Cosine similarity score (0-1)
+        float: Cosine similarity score
         
     Raises:
-        ValueError: If vectors are empty or different dimensions
+        ValueError: If vectors have different dimensions
     """
-    # Convert to numpy arrays if they aren't already
-    v1 = np.array(vec1, dtype=np.float32).reshape(1, -1)
-    v2 = np.array(vec2, dtype=np.float32).reshape(1, -1)
+    # Convert to numpy arrays if needed
+    if not isinstance(v1, np.ndarray):
+        v1 = np.array(v1)
+    if not isinstance(v2, np.ndarray):
+        v2 = np.array(v2)
+        
+    if v1.shape != v2.shape:
+        raise ValueError(f"Vector dimensions do not match: {v1.shape} vs {v2.shape}")
+        
+    # Calculate cosine similarity
+    dot = np.dot(v1, v2)
+    norm_v1 = np.linalg.norm(v1)
+    norm_v2 = np.linalg.norm(v2)
     
-    # Check dimensions
-    if v1.shape[1] != v2.shape[1]:
-        raise ValueError(f"Vector dimensions don't match: {v1.shape[1]} vs {v2.shape[1]}")
-    
-    # Use scikit-learn's cosine_similarity which is optimized
-    similarity = sk_cosine_similarity(v1, v2)[0][0]
-    
-    # Ensure the result is within valid bounds
-    return max(min(float(similarity), 1.0), -1.0)
+    # Handle zero vectors
+    if norm_v1 == 0 or norm_v2 == 0:
+        return 0.0
+        
+    return float(dot / (norm_v1 * norm_v2))
 
 
 def normalize_vector(vector: Union[List[float], np.ndarray]) -> List[float]:

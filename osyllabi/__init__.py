@@ -7,7 +7,7 @@ __version__ = "0.1.0"
 __author__ = "p3nGu1nZz"
 
 from osyllabi.main import main
-from osyllabi.curriculum import Curriculum
+from osyllabi.core.curriculum import Curriculum
 
 __all__ = [
     '__version__',

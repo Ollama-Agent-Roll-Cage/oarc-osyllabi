@@ -47,6 +47,8 @@ dependencies = [
     "faiss-cpu>=1.7.0",        # vector search (auto-upgrades to GPU version if available)
     
     # RAG and LLMs
+    "llama-index>=0.10.0",     # RAG framework for LLMs
+    "llama-index-experimental>=0.1.0",  # Experimental features like PandasQueryEngine
     "ollama>=0.1.20",          # Ollama API client library for LLMs
     "tqdm>=4.65.0",            # progress bar for long-running tasks
 

@@ -1,11 +1,7 @@
 """
-Utilities package for Osyllabi
+Utility functions and helpers.
 """
-
-# Import directly from tenacity
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-
-# Import other utilities from utils module
+from osyllabi.utils.log import log, is_debug_mode
 from osyllabi.utils.utils import (
     safe_to_int,
     safe_to_float,
@@ -14,32 +10,30 @@ from osyllabi.utils.utils import (
     get_system_info,
     get_timestamp,
     sanitize_filename,
-    detect_gpu,
-    upgrade_faiss_to_gpu,
-    check_faiss_gpu_capability,
-    check_for_ollama,
+    check_for_ollama
 )
-from osyllabi.utils.const import SUCCESS, FAILURE
-from osyllabi.utils.paths import (
-    ensure_directory, get_project_root, get_temp_directory,
-    get_output_directory, create_unique_file_path,
-    is_valid_source_file, find_source_files
-)
-from osyllabi.utils.log import log, is_debug_mode
+from osyllabi.utils.deps import DependencyManager
+
+# Export DependencyManager methods as module-level functions
+check_cuda_capability = DependencyManager.check_cuda_capability
+install_cuda_toolkit = DependencyManager.install_cuda_toolkit
+upgrade_faiss = DependencyManager.upgrade_faiss
+check_deps = DependencyManager.check_deps
 
 __all__ = [
-    # Constants
-    "SUCCESS", "FAILURE",
-    
-    # Utilities
-    "is_debug_mode", "safe_to_int", "safe_to_float",
-    "find_files_by_extensions", "get_app_dirs", "get_system_info",
-    "retry", "get_timestamp", "sanitize_filename",
-    "detect_gpu", "upgrade_faiss_to_gpu", "check_faiss_gpu_capability",
-    "check_for_ollama",
-    
-    # Path utilities
-    "ensure_directory", "get_project_root", "get_temp_directory",
-    "get_output_directory", "create_unique_file_path",
-    "is_valid_source_file", "find_source_files",
+    'log',
+    'is_debug_mode',
+    'safe_to_int',
+    'safe_to_float',
+    'find_files_by_extensions',
+    'get_app_dirs',
+    'get_system_info',
+    'get_timestamp',
+    'sanitize_filename',
+    'check_for_ollama',
+    'check_cuda_capability',
+    'install_cuda_toolkit',
+    'upgrade_faiss',
+    'check_deps',
+    'DependencyManager'
 ]

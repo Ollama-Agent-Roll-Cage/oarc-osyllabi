@@ -5,15 +5,15 @@ import os
 import sys
 import platform
 import tempfile
-import subprocess
 from pathlib import Path
 from datetime import datetime
-from typing import Any, List, Dict, Union, TypeVar, Tuple, Optional
+from typing import Any, List, Dict, Union, TypeVar
 
 # Import and explicitly re-export retry
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from osyllabi.utils.log import log
+from osyllabi.utils.deps import DependencyManager  # Import but don't wrap methods
 
 # Type variable for generic functions
 T = TypeVar('T')
@@ -184,174 +184,6 @@ def sanitize_filename(filename: str) -> str:
         filename = name + ext
         
     return filename
-
-
-def detect_gpu() -> Tuple[bool, Optional[str]]:
-    """
-    Detect if a CUDA-capable GPU is available on the system without requiring ML frameworks.
-    
-    Returns:
-        Tuple[bool, Optional[str]]: (GPU available, GPU info string)
-    """
-    # Try using nvidia-smi command (most direct method)
-    try:
-        result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=3,
-            text=True
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            # Parse the output to get GPU info
-            gpu_info = f"NVIDIA GPU: {result.stdout.strip()}"
-            return True, gpu_info
-    except (subprocess.SubprocessError, FileNotFoundError):
-        pass
-    
-    # Check for CUDA availability using system info (Windows-specific)
-    if sys.platform == 'win32':
-        try:
-            result = subprocess.run(
-                ["where", "nvcc"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=3,
-                text=True
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                return True, "CUDA toolkit detected via nvcc"
-        except (subprocess.SubprocessError, FileNotFoundError):
-            pass
-        
-        # Check Windows registry for NVIDIA drivers
-        try:
-            import winreg
-            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\NVIDIA Corporation\global")
-            return True, "NVIDIA drivers detected in Windows registry"
-        except (ImportError, OSError, WindowsError):
-            pass
-    
-    # Linux-specific checks
-    elif sys.platform.startswith('linux'):
-        # Check for /proc entries that indicate NVIDIA GPU
-        gpu_devices = Path('/proc/driver/nvidia/gpus')
-        if gpu_devices.exists() and any(gpu_devices.iterdir()):
-            return True, "NVIDIA GPU detected via /proc/driver/nvidia"
-            
-        # Check loaded kernel modules
-        try:
-            result = subprocess.run(
-                ["lsmod"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=3,
-                text=True
-            )
-            if "nvidia" in result.stdout:
-                return True, "NVIDIA kernel modules detected"
-        except (subprocess.SubprocessError, FileNotFoundError):
-            pass
-    
-    # No GPU detected
-    return False, None
-
-
-def upgrade_faiss_to_gpu() -> Tuple[bool, str]:
-    """
-    Attempt to upgrade faiss-cpu to faiss-gpu if a GPU is available.
-    
-    Returns:
-        Tuple[bool, str]: (Success, Message) - whether upgrade was successful and status message
-    """
-    # Check if GPU is available
-    has_gpu, gpu_info = detect_gpu()
-    
-    if not has_gpu:
-        return False, "No GPU detected, keeping faiss-cpu"
-    
-    log.info(f"GPU detected: {gpu_info}")
-    
-    # Check if faiss is installed and which version
-    try:
-        import faiss
-        is_cpu_version = not hasattr(faiss, 'StandardGpuResources')
-        
-        if not is_cpu_version:
-            return True, "faiss-gpu is already installed"
-        
-        log.info("faiss-cpu detected, upgrading to faiss-gpu")
-    except ImportError:
-        log.info("faiss not installed, attempting to install faiss-gpu")
-        is_cpu_version = False
-    
-    # Try to install faiss-gpu
-    try:
-        # Uninstall faiss-cpu if it's installed
-        if is_cpu_version:
-            log.info("Uninstalling faiss-cpu")
-            subprocess.run(
-                [sys.executable, "-m", "pip", "uninstall", "-y", "faiss-cpu"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                check=True
-            )
-        
-        # Install faiss-gpu
-        log.info("Installing faiss-gpu")
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "faiss-gpu>=1.7.2"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        
-        if result.returncode == 0:
-            return True, "Successfully upgraded to faiss-gpu"
-        else:
-            error_msg = f"Failed to install faiss-gpu: {result.stderr}"
-            log.warning(error_msg)
-            
-            # If faiss-cpu was uninstalled, attempt to reinstall it
-            if is_cpu_version:
-                log.info("Reinstalling faiss-cpu")
-                subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "faiss-cpu>=1.7.0"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
-                )
-            return False, error_msg
-    
-    except Exception as e:
-        error_msg = f"Error during faiss upgrade: {str(e)}"
-        log.error(error_msg)
-        return False, error_msg
-
-
-def check_faiss_gpu_capability() -> bool:
-    """
-    Check if FAISS has GPU support enabled.
-    
-    Returns:
-        bool: True if faiss-gpu is available and working
-    """
-    try:
-        import faiss
-        if hasattr(faiss, 'StandardGpuResources'):
-            # Try to create a GPU resource to verify it actually works
-            try:
-                res = faiss.StandardGpuResources()
-                # Create a small test index
-                index = faiss.IndexFlatL2(128)
-                gpu_index = faiss.index_cpu_to_gpu(res, 0, index)
-                log.info("FAISS GPU capability verified")
-                return True
-            except Exception as e:
-                log.warning(f"FAISS has GPU support but initialization failed: {e}")
-                return False
-        return False
-    except ImportError:
-        return False
 
 
 def check_for_ollama(raise_error: bool = True) -> bool:

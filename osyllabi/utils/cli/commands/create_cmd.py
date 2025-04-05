@@ -5,7 +5,7 @@ import argparse
 
 from osyllabi.utils.cli.cmd import Command
 from osyllabi.utils.cli.parser import setup_create_arguments
-from osyllabi.curriculum import Curriculum
+from osyllabi.core.curriculum import Curriculum
 
 
 class CreateCommand(Command):
