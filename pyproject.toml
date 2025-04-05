@@ -50,6 +50,7 @@ dependencies = [
     # RAG and LLMs
     "ollama>=0.4.7",           # Ollama API client library for LLMs
     "llama-index>=0.12.28",    # Agent framework for LLMs
+    "llama-index-readers-json>=0.3.0", # JSON reader for LlamaIndex
     "llama-index-experimental>=0.5.4",  # Experimental features like PandasQueryEngine
     "langchain>=0.3.23",       # advanced text chunking and RAG pipelines
     "langchain-community>=0.3.21", # community-contributed modules for LangChain

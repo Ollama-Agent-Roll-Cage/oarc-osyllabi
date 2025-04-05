@@ -41,13 +41,13 @@ except ImportError:
 
 try:
     from llama_index.core import Document as LlamaDocument
+    from llama_index.readers.json import JSONReader
     from llama_index.readers.file import (
         PDFReader, 
         DocxReader,
         CSVReader,
         ImageReader,
         MarkdownReader,
-        JSONReader,
     )
     from llama_index.core.node_parser import SentenceSplitter
     LLAMA_INDEX_AVAILABLE = True
