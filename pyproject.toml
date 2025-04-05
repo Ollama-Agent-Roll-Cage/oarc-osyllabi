@@ -53,6 +53,7 @@ dependencies = [
     "tqdm>=4.65.0",            # progress bar for long-running tasks
 
     "langchain>=0.1.0",        # advanced text chunking and RAG pipelines
+    "langchain-community>=0.3.21", # community-contributed modules for LangChain
     "tiktoken>=0.5.2",         # accurate token counting
 ]
 

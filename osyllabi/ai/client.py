@@ -5,6 +5,8 @@ import json
 import time
 import os
 from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
+import asyncio
+import httpx
 
 from ollama import AsyncClient
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -54,19 +56,31 @@ class OllamaClient:
         """
         # Use configuration values or defaults
         self.base_url = base_url or AI_CONFIG.get('ollama_api_url', 'http://localhost:11434')
+        self.api_url = f"{self.base_url}/api"  # Add this line to create api_url attribute
         self.default_model = default_model or AI_CONFIG.get('default_model', 'llama3')
         self.default_temperature = default_temperature if default_temperature is not None else AI_CONFIG.get('temperature', 0.7)
         self.default_max_tokens = 4000  # Always use 4000 as default max_tokens
         
-        # Create output directory with run ID based on epoch time
+        # Create run directory structure
         self.run_id = str(int(time.time()))
         base_output_dir = output_dir or os.path.join(os.getcwd(), "output")
         self.output_dir = os.path.join(base_output_dir, self.run_id)
+        
+        # Create subdirectories for different data types
+        self.collected_dir = os.path.join(self.output_dir, "collected")
+        self.extracted_dir = os.path.join(self.output_dir, "extracted")
+        
+        # Create the directory structure
         os.makedirs(self.output_dir, exist_ok=True)
-        log.info(f"Created output directory for run: {self.output_dir}")
+        os.makedirs(self.collected_dir, exist_ok=True)
+        os.makedirs(self.extracted_dir, exist_ok=True)
+        
+        log.info(f"Created output directory structure in: {self.output_dir}")
         
         # Initialize Ollama client
         self.client = AsyncClient(host=self.base_url)
+        self.last_request = {}  # Add this to store last request data for debugging
+        self.last_response = {}  # Add this to store last response data for debugging
         
     async def initialize(self):
         """Initialize the client and validate server connection."""
@@ -136,19 +150,30 @@ class OllamaClient:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         
-        # Call chat API (never use streaming)
-        response = await self.chat(
-            messages=messages,
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=False  # Never use streaming
-        )
+        # Get model parameters
+        model_name = model or self.default_model
+        temp = temperature if temperature is not None else self.default_temperature
+        num_predict = max_tokens or self.default_max_tokens
         
-        # Extract content from chat response
-        if response and "message" in response and "content" in response["message"]:
-            return response["message"]["content"].strip()
-        return ""
+        try:
+            # Use the ollama library's chat method
+            response = await self.client.chat(
+                model=model_name,
+                messages=messages,
+                options={
+                    "temperature": temp,
+                    "num_predict": num_predict
+                }
+            )
+            
+            # Extract content from chat response
+            if response and "message" in response and "content" in response["message"]:
+                return response["message"]["content"].strip()
+            return ""
+                
+        except Exception as e:
+            log.error(f"Failed to generate text: {e}")
+            return f"Error generating text: {e}"
 
     @retry(
         stop=stop_after_attempt(3),
@@ -316,30 +341,37 @@ class OllamaClient:
             log.error(f"Failed to process batch embeddings: {e}")
             raise RuntimeError(f"Failed to generate batch embeddings: {e}")
     
-    def get_output_path(self, filename: str) -> str:
+    def get_output_path(self, filename: str, subdir: Optional[str] = None) -> str:
         """
         Get a path in the run's output directory.
         
         Args:
-            filename: Name of the file to create in the output directory
+            filename: Name of the file to create
+            subdir: Optional subdirectory (collected, extracted, or None for base run dir)
             
         Returns:
             Full path to the file in the output directory
         """
-        return os.path.join(self.output_dir, filename)
+        if subdir == "collected":
+            return os.path.join(self.collected_dir, filename)
+        elif subdir == "extracted":
+            return os.path.join(self.extracted_dir, filename)
+        else:
+            return os.path.join(self.output_dir, filename)
     
-    def save_to_output(self, filename: str, content: Union[str, Dict, List]) -> str:
+    def save_to_output(self, filename: str, content: Union[str, Dict, List], subdir: Optional[str] = None) -> str:
         """
         Save content to a file in the output directory.
         
         Args:
             filename: Name of the file to save
             content: Content to save (string or JSON-serializable object)
+            subdir: Optional subdirectory (collected, extracted, or None for base run dir)
             
         Returns:
             Path to the saved file
         """
-        filepath = self.get_output_path(filename)
+        filepath = self.get_output_path(filename, subdir)
         
         # Create parent directories if needed
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -402,3 +434,125 @@ class OllamaClient:
         except Exception as e:
             log.error(f"Failed to pull model {model}: {e}")
             raise RuntimeError(f"Failed to pull model: {e}")
+
+    # Rename the async generate method to avoid naming conflict
+    async def async_generate(
+        self, 
+        prompt: str, 
+        model: Optional[str] = None,
+        system: Optional[str] = None,
+        temperature: Optional[float] = None, 
+        max_tokens: Optional[int] = None,
+        stream: bool = False,
+        callback: Optional[Callable[[str], None]] = None
+    ) -> str:
+        """
+        Generate a completion from a prompt using chat API (async version).
+        
+        Args:
+            prompt: The prompt to generate from
+            model: Model to use (defaults to client's default_model)
+            system: Optional system prompt for context
+            temperature: Controls randomness (0-1)
+            max_tokens: Maximum tokens to generate
+            stream: Not used - always set to False
+            callback: Not used
+            
+        Returns:
+            The generated text
+            
+        Raises:
+            ValueError: If the prompt is empty
+            RuntimeError: On API errors
+        """
+        if not prompt:
+            raise ValueError("Prompt cannot be empty")
+        
+        # Convert parameters to chat format
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        
+        # Get model parameters
+        model_name = model or self.default_model
+        temp = temperature if temperature is not None else self.default_temperature
+        num_predict = max_tokens or self.default_max_tokens
+        
+        try:
+            # Use the ollama library's chat method
+            response = await self.client.chat(
+                model=model_name,
+                messages=messages,
+                options={
+                    "temperature": temp,
+                    "num_predict": num_predict
+                }
+            )
+            
+            # Extract content from chat response
+            if response and "message" in response and "content" in response["message"]:
+                return response["message"]["content"].strip()
+            return ""
+                
+        except Exception as e:
+            log.error(f"Failed to generate text: {e}")
+            return f"Error generating text: {e}"
+
+    # Make the sync generate method a wrapper for the async version
+    def generate(
+        self, 
+        prompt: str, 
+        model: Optional[str] = None, 
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        system: Optional[str] = None
+    ) -> str:
+        """
+        Generate text using the Ollama API (synchronous version).
+        
+        This is a synchronous wrapper around the async generate method.
+        
+        Args:
+            prompt: Input prompt
+            model: Model to use
+            temperature: Sampling temperature (higher = more creative)
+            max_tokens: Maximum number of tokens to generate
+            system: Optional system prompt
+            
+        Returns:
+            Generated text
+        """
+        # Run the async method in a new event loop if needed
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Create a new loop for this operation
+                new_loop = asyncio.new_event_loop()
+                try:
+                    return new_loop.run_until_complete(
+                        self.async_generate(prompt, model=model, system=system, 
+                                           temperature=temperature, max_tokens=max_tokens)
+                    )
+                finally:
+                    new_loop.close()
+            else:
+                # Use the existing loop
+                return loop.run_until_complete(
+                    self.async_generate(prompt, model=model, system=system, 
+                                      temperature=temperature, max_tokens=max_tokens)
+                )
+        except RuntimeError:
+            # No event loop in thread, create one
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(
+                    self.async_generate(prompt, model=model, system=system, 
+                                      temperature=temperature, max_tokens=max_tokens)
+                )
+            finally:
+                loop.close()
+        except Exception as e:
+            log.error(f"Error generating text: {e}")
+            return f"Error generating text: {e}"

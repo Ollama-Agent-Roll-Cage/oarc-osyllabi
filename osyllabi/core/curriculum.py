@@ -1,6 +1,8 @@
 """
 Curriculum generation functionality.
 """
+import os
+import re
 import time
 import json
 import argparse
@@ -206,7 +208,7 @@ class Curriculum:
                         "created": self.created_at.isoformat()
                     },
                     "links": self.links,
-                    "sources": [str(s) for s in self.source],
+                    "sources": self.source,
                     "content": self.content
                 }
                 
