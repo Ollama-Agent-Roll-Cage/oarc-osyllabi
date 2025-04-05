@@ -235,6 +235,7 @@ class HTMLExtractor(ContentExtractorABC):
         
         # Extract metadata
         metadata = self._extract_metadata(resource, soup, html_content)
+        metadata["Content-Type"] = resource.headers.get("Content-Type")
         
         return {
             "title": title,

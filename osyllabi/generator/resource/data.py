@@ -13,6 +13,28 @@ from typing import List, Dict, Any, Optional, Set, Tuple
 from osyllabi.utils.log import log
 from osyllabi.generator.resource.extractor import ContentExtractorABC
 
+# Optional imports with fallbacks
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    pd = None
+    PANDAS_AVAILABLE = False
+
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    yaml = None
+    YAML_AVAILABLE = False
+
+try:
+    from docx import Document
+    DOCX_AVAILABLE = True
+except ImportError:
+    Document = None
+    DOCX_AVAILABLE = False
+
 
 class DataFileExtractor(ContentExtractorABC):
     """
@@ -34,10 +56,10 @@ class DataFileExtractor(ContentExtractorABC):
             '.docx': self._handle_docx
         }
         
-        # Check for available libraries
-        self.yaml_available = importlib.util.find_spec("yaml") is not None
-        self.pandas_available = importlib.util.find_spec("pandas") is not None
-        self.docx_available = importlib.util.find_spec("docx") is not None
+        # Store availability of optional dependencies
+        self.pandas_available = PANDAS_AVAILABLE
+        self.yaml_available = YAML_AVAILABLE
+        self.docx_available = DOCX_AVAILABLE
     
     def extract(self, file_path: Path) -> Dict[str, Any]:
         """
@@ -131,144 +153,70 @@ class DataFileExtractor(ContentExtractorABC):
             }
     
     def _handle_csv(self, file_path: Path) -> Dict[str, Any]:
-        """Handle CSV/TSV file extraction."""
+        """Handle CSV file extraction."""
         try:
-            # Use pandas if available for better CSV handling
             if self.pandas_available:
-                import pandas as pd
+                # Use pandas for CSV handling
+                df = pd.read_csv(file_path)
+                content = f"# CSV Data Analysis\n\n"
+                content += f"## Statistics\n"
+                content += f"- Rows: {len(df)}\n"
+                content += f"- Columns: {len(df.columns)}\n\n"
+                content += f"## Preview\n```\n{df.head().to_string()}\n```\n\n"
                 
-                # Determine delimiter
-                delimiter = ',' if file_path.suffix.lower() == '.csv' else '\t'
-                
-                # Read data with pandas
-                df = pd.read_csv(file_path, delimiter=delimiter, nrows=100)  # Limit to 100 rows
-                
-                # Get basic info
-                row_count = len(df)
-                col_count = len(df.columns)
-                header = df.columns.tolist()
-                
-                # Basic statistics for numeric columns
+                # Basic statistics
                 stats = {}
-                for col in df.select_dtypes(include=['number']).columns:
+                numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns
+                for col in numeric_cols:
                     stats[col] = {
-                        "min": float(df[col].min()),
-                        "max": float(df[col].max()),
-                        "mean": float(df[col].mean()),
-                        "median": float(df[col].median())
+                        'min': df[col].min(),
+                        'max': df[col].max(),
+                        'mean': df[col].mean(),
+                        'median': df[col].median()
                     }
-                
-                # Generate summary
-                summary = [f"# CSV Data Analysis: {file_path.name}"]
-                summary.append(f"\n## Structure")
-                summary.append(f"- Rows: {row_count}")
-                summary.append(f"- Columns: {col_count}")
-                
-                if header:
-                    summary.append(f"\n## Headers")
-                    for i, col in enumerate(header):
-                        summary.append(f"- Column {i+1}: {col}")
-                
-                # Add statistics if available
-                if stats:
-                    summary.append(f"\n## Statistics")
-                    for col, col_stats in stats.items():
-                        summary.append(f"- {col}: min={col_stats['min']:.2f}, max={col_stats['max']:.2f}, mean={col_stats['mean']:.2f}")
-                
-                # Show sample data
-                sample_rows = min(5, row_count)
-                if sample_rows > 0:
-                    summary.append(f"\n## Sample Data (first {sample_rows} rows)")
-                    summary.append(f"\n```\n{df.head(sample_rows).to_string()}\n```")
                 
                 return {
                     "title": file_path.name,
-                    "content": "\n".join(summary),
+                    "content": content,
                     "content_type": "csv",
-                    "extension": file_path.suffix,
                     "metadata": {
-                        "size_bytes": file_path.stat().st_size,
-                        "row_count": row_count,
-                        "column_count": col_count,
-                        "headers": header,
+                        "row_count": len(df),
+                        "column_count": len(df.columns),
+                        "headers": list(df.columns),
                         "statistics": stats
                     }
                 }
-                
-            # Fall back to standard library if pandas not available
             else:
-                delimiter = ',' if file_path.suffix.lower() == '.csv' else '\t'
-                rows = []
-                
-                with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-                    reader = csv.reader(f, delimiter=delimiter)
-                    for row in reader:
-                        rows.append(row)
-                        if len(rows) >= 100:  # Limit to 100 rows for performance
-                            break
-                
-                # Create summary
-                row_count = len(rows)
-                col_count = len(rows[0]) if row_count > 0 else 0
-                header = rows[0] if row_count > 0 else []
-                
-                summary = [f"# CSV Data Analysis: {file_path.name}"]
-                summary.append(f"\n## Structure")
-                summary.append(f"- Rows: {row_count}")
-                summary.append(f"- Columns: {col_count}")
-                
-                if header:
-                    summary.append(f"\n## Headers")
-                    for i, col in enumerate(header):
-                        summary.append(f"- Column {i+1}: {col}")
-                
-                # Show sample data
-                sample_rows = min(5, row_count)
-                if sample_rows > 0:
-                    summary.append(f"\n## Sample Data (first {sample_rows} rows)")
+                # Fallback to basic CSV handling
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    reader = csv.reader(f)
+                    rows = list(reader)
+                    headers = rows[0] if rows else []
                     
-                    # Format as table
-                    table_rows = []
-                    if row_count > 1:  # If we have data rows
-                        for i in range(1, sample_rows + 1):
-                            if i < row_count:
-                                table_rows.append("| " + " | ".join(rows[i]) + " |")
+                    # Create content with statistics
+                    content = "# CSV Data Analysis\n\n"
+                    content += f"## Statistics\n"
+                    content += f"- Rows: {len(rows)}\n"
+                    content += f"- Columns: {len(headers)}\n\n"
+                    content += "\n".join([",".join(row) for row in rows])
                     
-                    if header and table_rows:
-                        header_row = "| " + " | ".join(header) + " |"
-                        separator = "| " + " | ".join(["---"] * len(header)) + " |"
-                        table = [header_row, separator] + table_rows
-                        summary.append("\n" + "\n".join(table))
-                
-                return {
-                    "title": file_path.name,
-                    "content": "\n".join(summary),
-                    "content_type": "csv",
-                    "extension": file_path.suffix,
-                    "metadata": {
-                        "size_bytes": file_path.stat().st_size,
-                        "row_count": row_count,
-                        "column_count": col_count,
-                        "headers": header if header else []
+                    return {
+                        "title": file_path.name,
+                        "content": content,
+                        "content_type": "csv",
+                        "metadata": {
+                            "row_count": len(rows),
+                            "column_count": len(headers),
+                            "headers": headers
+                        }
                     }
-                }
-                
         except Exception as e:
             log.warning(f"Error processing CSV {file_path}: {e}")
-            
-            # Fall back to basic text
-            with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-                content = f.read()
-                
             return {
                 "title": file_path.name,
-                "content": content,
+                "content": f"Error processing CSV file: {e}",
                 "content_type": "text",
-                "extension": file_path.suffix,
-                "metadata": {
-                    "size_bytes": file_path.stat().st_size,
-                    "error": str(e)
-                }
+                "metadata": {"error": str(e)}
             }
     
     def _handle_yaml(self, file_path: Path) -> Dict[str, Any]:
@@ -322,57 +270,44 @@ class DataFileExtractor(ContentExtractorABC):
                 }
             }
     
-    def _handle_docx(self, file_path: Path) -> Dict[str, Any]:
-        """Handle DOCX file extraction using python-docx if available."""
-        if not self.docx_available:
-            return None
-            
+    def _handle_docx(self, file_path: Path) -> Optional[Dict[str, Any]]:
+        """Handle DOCX file extraction."""
         try:
-            from docx import Document
-            
-            # Open the document
+            if not self.docx_available:
+                return None
+                
             doc = Document(file_path)
-            
-            # Extract text
-            paragraphs = []
-            for paragraph in doc.paragraphs:
-                if paragraph.text.strip():
-                    paragraphs.append(paragraph.text)
-            
-            # Extract metadata
-            metadata = {
-                "size_bytes": file_path.stat().st_size,
-                "paragraph_count": len(paragraphs),
-                "section_count": len(doc.sections),
-            }
-            
-            # Get headings/structure
+            content = []
             structure = []
-            for paragraph in doc.paragraphs:
-                if paragraph.style.name.startswith('Heading'):
-                    heading_level = int(paragraph.style.name.replace('Heading ', ''))
-                    if paragraph.text.strip():
-                        structure.append({
-                            "level": heading_level,
-                            "title": paragraph.text
-                        })
             
-            if structure:
-                metadata["structure"] = structure
-            
-            # Combine all paragraphs into content
-            content = "\n\n".join(paragraphs)
+            # Extract content and structure
+            for para in doc.paragraphs:
+                content.append(para.text)
+                if para.style and "Heading" in para.style.name:
+                    level = int(para.style.name[-1]) if para.style.name[-1].isdigit() else 1
+                    structure.append({
+                        "level": level,
+                        "title": para.text
+                    })
             
             return {
                 "title": file_path.name,
-                "content": content,
+                "content": "\n".join(content),
                 "content_type": "docx",
-                "extension": file_path.suffix,
-                "metadata": metadata
+                "metadata": {
+                    "paragraph_count": len(doc.paragraphs),
+                    "section_count": len(doc.sections),
+                    "structure": structure
+                }
             }
         except Exception as e:
             log.warning(f"Error processing DOCX {file_path}: {e}")
-            return None
+            return {
+                "title": file_path.name,
+                "content": f"Error processing DOCX file: {e}",
+                "content_type": "text",
+                "metadata": {"error": str(e)}
+            }
             
     def _analyze_json(self, data: Any) -> Dict[str, Any]:
         """

@@ -1,18 +1,17 @@
 """
-Curriculum generation functionality.
+Generator package for Osyllabi.
 
-This package provides components for generating curriculum content
-using AI and resource collection.
+This package provides functionality for curriculum generation.
 """
 
-# Import main components
-from osyllabi.generator.resources import ResourceCollectionManager
-from osyllabi.generator.workflow import CurriculumWorkflow
+# Import from the resource package
 from osyllabi.generator.resource import (
     ResourceCollector,
     ContentExtractorABC,
-    ResourceManager
+    ResourceManager,
+    ResourceCollectionManager
 )
+from osyllabi.generator.workflow import CurriculumWorkflow
 
 __all__ = [
     'ResourceCollectionManager',

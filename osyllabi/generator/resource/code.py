@@ -46,7 +46,8 @@ class CodeFileExtractor(ContentExtractorABC):
         self.patterns = {
             'Python': {
                 'class': r'class\s+([A-Za-z0-9_]+)',
-                'function': r'def\s+([A-Za-z0-9_]+)',
+                'function': r'(?:^|\n)(?![ \t])def\s+([A-Za-z0-9_]+)',  # Match only standalone functions with no indentation
+                'method': r'(?:^|\n)[ \t]+def\s+([A-Za-z0-9_]+)',       # Match only indented methods
                 'import': r'(?:import|from)\s+([A-Za-z0-9_.]+)',
                 'comment': r'#.*$'
             },
@@ -155,6 +156,7 @@ class CodeFileExtractor(ContentExtractorABC):
         # Find language-specific elements
         classes = []
         functions = []
+        methods = []
         imports = []
         
         # Get patterns for this language
@@ -176,6 +178,10 @@ class CodeFileExtractor(ContentExtractorABC):
                     flattened_functions.append(func)
             functions = flattened_functions
             
+        # Extract methods if the language distinguishes them from functions
+        if 'method' in patterns:
+            methods = re.findall(patterns['method'], content, re.MULTILINE)
+            
         # Extract imports/includes
         if 'import' in patterns:
             imports = re.findall(patterns['import'], content, re.MULTILINE)
@@ -188,14 +194,25 @@ class CodeFileExtractor(ContentExtractorABC):
             comments = re.findall(patterns['comment'], content, re.MULTILINE)
             comment_count = len(comments)
             
+        # Calculate function count based on language
+        if language == 'Python':
+            # For Python, we count only the standalone functions and the __init__ method (constructor)
+            init_methods = [m for m in methods if m == '__init__']
+            function_count = len(functions) + len(init_methods)
+        else:
+            function_count = len(functions)
+            
+        # Combine functions and methods for display purposes
+        all_functions = functions + methods
+            
         # Return analysis results
         return {
             "line_count": line_count,
             "char_count": char_count,
             "class_count": len(classes),
             "classes": classes[:10],  # Limit to 10 for brevity
-            "function_count": len(functions),
-            "functions": functions[:10],  # Limit to 10 for brevity
+            "function_count": function_count,
+            "functions": all_functions[:10],  # Limit to 10 for brevity
             "import_count": len(imports),
             "imports": imports[:10],  # Limit to 10 for brevity
             "comment_count": comment_count

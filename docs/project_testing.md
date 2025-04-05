@@ -229,7 +229,7 @@ Follow these guidelines when creating new tests:
 
 1. **Test File Organization**:
 
-```
+```bash
 osyllabi/
 ├── tests/
 │   ├── __init__.py
@@ -264,7 +264,7 @@ osyllabi/
            self.assertEqual(expected_result, actual_result)
    ```
 
-3. **Mocking Ollama**:
+2. **Mocking Ollama**:
 
    ```python
    @patch('osyllabi.ai.client.requests.post')
@@ -284,7 +284,7 @@ osyllabi/
        self.assertEqual("Mocked response", result)
    ```
 
-4. **Pytest Fixtures**:
+3. **Pytest Fixtures**:
 
    ```python
    # In conftest.py

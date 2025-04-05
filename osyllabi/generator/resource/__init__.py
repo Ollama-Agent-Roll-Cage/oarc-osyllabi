@@ -7,7 +7,7 @@ sources such as URLs, files, and directories.
 
 from osyllabi.generator.resource.collector import ResourceCollector, CollectorABC
 from osyllabi.generator.resource.extractor import ContentExtractorABC
-from osyllabi.generator.resource.manager import ResourceManager
+from osyllabi.generator.resource.manager import ResourceManager, ResourceCollectionManager
 from osyllabi.generator.resource.web import WebResourceCollector
 from osyllabi.generator.resource.file import FileResourceCollector, FileExtractor
 from osyllabi.generator.resource.code import CodeFileExtractor
@@ -22,5 +22,6 @@ __all__ = [
     "FileResourceCollector",
     "FileExtractor",
     "CodeFileExtractor",
-    "DataFileExtractor"
+    "DataFileExtractor",
+    "ResourceCollectionManager"
 ]
