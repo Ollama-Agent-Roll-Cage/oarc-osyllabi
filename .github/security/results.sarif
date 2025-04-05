@@ -1,0 +1,98 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Osyllabi Security Scanner",
+          "version": "1.0.0",
+          "rules": [
+            {
+              "id": "SEC001",
+              "name": "hardcoded-credentials",
+              "shortDescription": {
+                "text": "Hardcoded Credentials Check"
+              },
+              "fullDescription": {
+                "text": "Checks for hardcoded credentials in the codebase"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "help": {
+                "text": "Avoid storing credentials directly in the code. Use environment variables or secure configuration management instead."
+              }
+            },
+            {
+              "id": "SEC002",
+              "name": "unsafe-imports",
+              "shortDescription": {
+                "text": "Unsafe Import Check"
+              },
+              "fullDescription": {
+                "text": "Checks for potentially unsafe module imports"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "Review imports for potential security implications and use secure alternatives when available."
+              }
+            },
+            {
+              "id": "SEC003", 
+              "name": "ai-model-validation",
+              "shortDescription": {
+                "text": "AI Model Access Validation"
+              },
+              "fullDescription": {
+                "text": "Validates proper access controls for AI model interactions"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "help": {
+                "text": "Ensure all AI model access is properly authenticated and validated."
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "SEC003",
+          "level": "warning",
+          "message": {
+            "text": "Ensure Ollama model access is properly validated"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "osyllabi/core/curriculum.py"
+                },
+                "region": {
+                  "startLine": 67,
+                  "endLine": 67,
+                  "snippet": {
+                    "text": "check_for_ollama(raise_error=True)"
+                  }
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "e7011159a6d2b3e4"
+          }
+        }
+      ],
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "toolExecutionNotifications": []
+        }
+      ]
+    }
+  ]
+}
