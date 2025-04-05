@@ -5,7 +5,7 @@ This module provides advanced vector mathematics operations using scikit-learn
 and other libraries to support retrieval-augmented generation capabilities.
 """
 import numpy as np
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union, Dict
 
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity as sk_cosine_similarity
@@ -251,3 +251,182 @@ def faiss_search(index: Any, query_vector: List[float], k: int = 5) -> Tuple[Lis
     
     # Convert to Python lists
     return distances[0].tolist(), indices[0].tolist()
+
+
+def weighted_average_vectors(vectors: List[List[float]], weights: List[float]) -> List[float]:
+    """
+    Calculate the weighted average of vectors.
+    
+    Args:
+        vectors: List of vectors to average
+        weights: Weight for each vector (must sum to 1.0)
+        
+    Returns:
+        List[float]: Weighted average vector
+        
+    Raises:
+        ValueError: If vectors or weights are invalid
+    """
+    if not vectors or not weights:
+        raise ValueError("Empty vectors or weights provided")
+        
+    if len(vectors) != len(weights):
+        raise ValueError("Number of vectors must match number of weights")
+        
+    # Check weights approximately sum to 1.0
+    weight_sum = sum(weights)
+    if not 0.99 <= weight_sum <= 1.01:
+        log.warning(f"Weights sum to {weight_sum}, not 1.0. Normalizing.")
+        weights = [w / weight_sum for w in weights]
+    
+    # Convert to numpy arrays
+    np_vectors = np.array(vectors, dtype=np.float32)
+    np_weights = np.array(weights, dtype=np.float32).reshape(-1, 1)
+    
+    # Calculate weighted average
+    weighted_avg = np.sum(np_vectors * np_weights, axis=0)
+    
+    return weighted_avg.tolist()
+
+
+def find_diverse_vectors(vectors: List[List[float]], count: int = 3, 
+                        min_similarity_threshold: float = 0.7) -> List[int]:
+    """
+    Find a diverse subset of vectors by maximizing distance between them.
+    
+    Args:
+        vectors: List of vectors to select from
+        count: Number of diverse vectors to select
+        min_similarity_threshold: Minimum similarity threshold
+        
+    Returns:
+        List[int]: Indices of the selected diverse vectors
+    """
+    if not vectors:
+        return []
+        
+    if count > len(vectors):
+        count = len(vectors)
+        
+    # Convert to numpy array
+    np_vectors = np.array(vectors, dtype=np.float32)
+    
+    # Start with the first vector
+    selected_indices = [0]
+    
+    # Iteratively add the most diverse vector
+    while len(selected_indices) < count:
+        max_min_distance = -1
+        next_index = -1
+        
+        # For each candidate vector
+        for i in range(len(np_vectors)):
+            if i in selected_indices:
+                continue  # Skip already selected vectors
+                
+            # Calculate minimum distance to any selected vector
+            min_distance = float('inf')
+            for j in selected_indices:
+                sim = cosine_similarity(np_vectors[i], np_vectors[j])
+                distance = 1.0 - sim  # Convert similarity to distance
+                min_distance = min(min_distance, distance)
+            
+            # If this vector is more diverse than current best
+            if min_distance > max_min_distance:
+                max_min_distance = min_distance
+                next_index = i
+        
+        # Add most diverse vector
+        if next_index != -1:
+            selected_indices.append(next_index)
+    
+    return selected_indices
+
+
+def detect_outliers(vectors: List[List[float]], threshold: float = 1.5) -> List[int]:
+    """
+    Detect outlier vectors based on distance from centroid.
+    
+    Args:
+        vectors: List of vectors to analyze
+        threshold: Standard deviation threshold for outlier detection
+        
+    Returns:
+        List[int]: Indices of outlier vectors
+    """
+    if not vectors or len(vectors) < 2:
+        return []
+        
+    # Convert to numpy array
+    np_vectors = np.array(vectors, dtype=np.float32)
+    
+    # Calculate centroid
+    centroid = np.mean(np_vectors, axis=0)
+    
+    # Calculate distances from centroid using Euclidean distance
+    distances = np.linalg.norm(np_vectors - centroid, axis=1)
+    
+    # Convert distances to z-scores for better outlier detection
+    std_dist = np.std(distances)
+    
+    if std_dist == 0:  # Avoid division by zero if all vectors are identical
+        return []
+    
+    outlier_indices = []
+    for i, dist in enumerate(distances):
+        if dist > threshold * std_dist:
+            outlier_indices.append(i)
+    
+    return outlier_indices
+
+
+def compute_vector_stats(vectors: List[List[float]]) -> Dict[str, Any]:
+    """
+    Compute statistical properties of a collection of vectors.
+    
+    Args:
+        vectors: List of vectors to analyze
+        
+    Returns:
+        Dict: Statistical properties including:
+            - dim: Dimensionality
+            - mean: Mean vector
+            - variance: Variance across dimensions
+            - min_magnitude: Minimum vector magnitude
+            - max_magnitude: Maximum vector magnitude
+            - avg_magnitude: Average vector magnitude
+    """
+    if not vectors:
+        return {
+            "dim": 0,
+            "count": 0,
+            "mean": [],
+            "variance": [],
+            "min_magnitude": 0,
+            "max_magnitude": 0,
+            "avg_magnitude": 0
+        }
+        
+    # Convert to numpy array
+    np_vectors = np.array(vectors, dtype=np.float32)
+    
+    # Compute statistics
+    dim = np_vectors.shape[1]
+    mean_vec = np.mean(np_vectors, axis=0)
+    variance = np.var(np_vectors, axis=0)
+    
+    # Compute magnitudes
+    magnitudes = np.linalg.norm(np_vectors, axis=1)
+    min_mag = float(np.min(magnitudes))
+    max_mag = float(np.max(magnitudes))
+    avg_mag = float(np.mean(magnitudes))
+    
+    return {
+        "dim": int(dim),
+        "count": len(vectors),
+        "mean": mean_vec.tolist(),
+        "variance": variance.tolist(),
+        "min_magnitude": min_mag,
+        "max_magnitude": max_mag,
+        "avg_magnitude": avg_mag
+    }
