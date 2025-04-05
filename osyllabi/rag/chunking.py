@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 from osyllabi.utils.log import log
 
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+CharacterTextSplitter = RecursiveCharacterTextSplitter
 
 @dataclass
 class ChunkMetadata:
@@ -70,12 +72,10 @@ class TextChunker:
             raise ImportError("LangChain is required for text chunking. Please install with 'pip install langchain'")
             
         try:
-            from langchain.text_splitter import RecursiveCharacterTextSplitter
-            
-            # Define separators to use for splitting, prioritizing paragraph breaks
+            # Use the already imported global CharacterTextSplitter instead of re-importing
             separators = ["\n\n", "\n", ". ", ", ", " ", ""]
             
-            self.text_splitter = RecursiveCharacterTextSplitter(
+            self.text_splitter = CharacterTextSplitter(
                 chunk_size=self.chunk_size,
                 chunk_overlap=self.overlap,
                 length_function=len,
@@ -200,3 +200,10 @@ class TextChunker:
             return len(encoding.encode(text))
         except ImportError:
             raise ImportError("tiktoken is required for token counting. Please install with 'pip install tiktoken'")
+    
+    def _get_optimal_chunk_size(self, text: str, max_chunks: int = 5) -> int:
+        length = len(text)
+        if length == 0:
+            return 0
+        chunk_size = length // max_chunks
+        return chunk_size if chunk_size > 0 else 1
