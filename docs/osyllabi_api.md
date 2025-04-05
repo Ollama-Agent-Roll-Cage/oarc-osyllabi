@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD033 MD032 MD031 MD040 -->
 # Osyllabi API Documentation
 
 This document provides comprehensive documentation for the Osyllabi API, covering core components, usage examples, and reference information.
@@ -18,6 +19,74 @@ This document provides comprehensive documentation for the Osyllabi API, coverin
 
 Osyllabi is a Python library for designing personalized curriculums using AI, web crawling, and data integration. The library provides both a command-line interface and a Python API for generating curriculum content.
 
+### Architecture Overview
+
+```mermaid
+flowchart TB
+    classDef primary fill:#f9f,stroke:#333,stroke-width:2px
+    classDef secondary fill:#bbf,stroke:#333,stroke-width:1px
+    classDef storage fill:#ffd,stroke:#333,stroke-width:1px,stroke-dasharray: 5 2
+    
+    subgraph UserInterface["User Interface"]
+        direction LR
+        CLI["CLI Commands"]:::secondary
+        PyAPI["Python API"]:::secondary
+    end
+    
+    subgraph CoreModules["Core Modules"]
+        direction LR
+        Curr["Curriculum"]:::primary
+        CWorkflow["CurriculumWorkflow"]:::secondary
+        Res["ResourceCollector"]:::secondary
+        
+        Curr --> CWorkflow
+        CWorkflow --> Res
+    end
+    
+    subgraph RAGSystem["RAG System"]
+        direction LR
+        RAGEng["RAGEngine"]:::primary
+        VecDB[(VectorDatabase)]:::storage
+        Emb["EmbeddingGenerator"]:::secondary
+        Chunk["TextChunker"]:::secondary
+        Qform["QueryFormulator"]:::secondary
+        CtxAsm["ContextAssembler"]:::secondary
+        
+        RAGEng --> VecDB
+        RAGEng --> Emb
+        RAGEng --> Chunk
+        RAGEng --> Qform
+        RAGEng --> CtxAsm
+    end
+    
+    subgraph AIIntegration["AI Integration"]
+        direction LR
+        Ollama["OllamaClient"]:::primary
+        Agents["Agents System"]:::secondary
+        RAGAgt["RAGAgent"]:::primary
+        
+        Agents --> RAGAgt
+        Agents --> Ollama
+        RAGAgt --> Ollama
+    end
+    
+    subgraph Utils["Utilities"]
+        direction LR
+        VecOps["Vector Operations"]:::secondary
+        FAISS["FAISS Integration"]:::secondary
+        Deco["Decorators"]:::secondary
+        
+        VecOps --> FAISS
+    end
+    
+    UserInterface --> CoreModules
+    CoreModules --> RAGSystem
+    CoreModules --> AIIntegration
+    RAGSystem --> AIIntegration
+    Utils --> RAGSystem
+    Utils --> AIIntegration
+```
+
 ### Dependencies
 
 Osyllabi has several required dependencies:
@@ -34,6 +103,56 @@ Osyllabi has several required dependencies:
 - **FAISS** (Optional): For optimized vector search
   - CPU version used by default
   - GPU version automatically used when hardware is available
+
+### Component Relationships
+
+```mermaid
+classDiagram
+    class Curriculum {
+        +topic: str
+        +title: str
+        +skill_level: str
+        +generate_content()
+        +export()
+        +create()
+    }
+    
+    class RAGEngine {
+        +vector_db: VectorDatabase
+        +embedder: EmbeddingGenerator
+        +chunker: TextChunker
+        +add_document()
+        +retrieve()
+    }
+    
+    class OllamaClient {
+        +generate()
+        +chat()
+        +embed()
+    }
+    
+    class RAGAgent {
+        +rag_engine: RAGEngine
+        +context_assembler: ContextAssembler
+        +query_formulator: QueryFormulator
+        +retrieve_context()
+        +create_enhanced_prompt()
+    }
+    
+    class VectorDatabase {
+        +add_document()
+        +search()
+    }
+
+    Curriculum --> RAGEngine : uses
+    Curriculum --> OllamaClient : uses
+    RAGEngine --> VectorDatabase : manages
+    RAGEngine --> EmbeddingGenerator : uses
+    RAGEngine --> TextChunker : uses
+    RAGAgent --> RAGEngine : uses
+    RAGAgent --> OllamaClient : uses
+    EmbeddingGenerator --> OllamaClient : uses
+```
 
 ## Core Components
 
@@ -111,6 +230,32 @@ learning_path = agent.generate(enhanced_prompt)
 
 Osyllabi provides a command-line interface for easy curriculum generation:
 
+### Command Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant CLI as CLI Router
+    participant CreateCmd as CreateCommand
+    participant Curriculum
+    participant CWorkflow as CurriculumWorkflow
+    participant OllamaClient
+    participant RAG as RAG System
+
+    User->>CLI: osyllabi create "Machine Learning"
+    CLI->>CreateCmd: Parse arguments
+    CreateCmd->>Curriculum: Curriculum.create()
+    Curriculum->>OllamaClient: Verify Ollama availability
+    Curriculum->>RAG: Initialize RAG engine
+    Curriculum->>CWorkflow: Generate content
+    CWorkflow->>OllamaClient: Request AI generations
+    CWorkflow->>RAG: Retrieve context
+    CWorkflow-->>Curriculum: Return generated content
+    Curriculum-->>User: Export curriculum document
+```
+
+### Available Commands
+
 ```bash
 # Basic curriculum creation
 osyllabi create "Machine Learning" --level "Beginner" --format md
@@ -129,11 +274,13 @@ osyllabi clean --output-dir "./output"
 osyllabi clean --cache
 ```
 
-### Available Commands
+### Command Options Table
 
-- **`create`**: Generate a new curriculum
-- **`clean`**: Clean up generated files and caches
-- **`help`**: Display help information
+| Command | Description | Primary Options |
+|---------|-------------|----------------|
+| `create` | Generate a new curriculum | `--title`, `--level`, `--links`, `--source` |
+| `clean` | Clean up generated files and caches | `--all`, `--output-dir`, `--cache` |
+| `help` | Display help information | `[command]` |
 
 ## Python API Usage
 
@@ -188,6 +335,27 @@ curriculum = Curriculum(
 
 # Export
 curriculum.export("./output/web_dev_curriculum.md")
+```
+
+### RAG Workflow
+
+```mermaid
+flowchart LR
+    classDef primary fill:#f9f,stroke:#333,stroke-width:2px
+    classDef secondary fill:#bbf,stroke:#333,stroke-width:1px
+    classDef process fill:#dfd,stroke:#333,stroke-width:1px
+
+    A[Document Text] -->|Chunking| B[Text Chunks]
+    B -->|Embedding| C[Vector Embeddings]
+    C -->|Storage| D[(Vector Database)]
+    
+    E[User Query] -->|Embedding| F[Query Vector]
+    F -->|Similarity Search| D
+    D -->|Top-K Results| G[Retrieved Chunks]
+    G -->|Assembly| H[Context Text]:::process
+    
+    H -->|Prompt Creation| I[Enhanced Prompt]:::process
+    I -->|AI Generation| J[RAG Result]:::primary
 ```
 
 ## API Reference
@@ -338,13 +506,13 @@ class TextChunker:
     )
     
     def chunk_text(self, text: str) -> List[str]:
-        """Split text into overlapping chunks."""
+        """Split text into overlapping chunks.""" 
         
     def chunk_text_with_metadata(self, text: str) -> List[Dict[str, Any]]:
-        """Split text into overlapping chunks with metadata."""
+        """Split text into overlapping chunks with metadata.""" 
         
     def count_tokens(self, text: str) -> int:
-        """Estimate the number of tokens in the text."""
+        """Estimate the number of tokens in the text.""" 
 ```
 
 #### `VectorDatabase`
@@ -368,7 +536,7 @@ class VectorDatabase:
         source: Optional[str] = None,
         dedup: bool = True
     ) -> List[int]:
-        """Add document chunks and their vectors to the database."""
+        """Add document chunks and their vectors to the database.""" 
         
     def search(
         self,
@@ -377,13 +545,13 @@ class VectorDatabase:
         threshold: float = 0.0,
         source_filter: Optional[Union[str, List[str]]] = None
     ) -> List[Dict[str, Any]]:
-        """Find most similar vectors using cosine similarity."""
+        """Find most similar vectors using cosine similarity.""" 
         
     def get_stats(self) -> Dict[str, Any]:
-        """Get database statistics."""
+        """Get database statistics.""" 
         
     def close(self) -> None:
-        """Close the database connection."""
+        """Close the database connection.""" 
 ```
 
 ### AI Integration
@@ -403,27 +571,27 @@ class Agent(abc.ABC):
     )
     
     def set_model(self, model: str) -> None:
-        """Set the model for this agent."""
+        """Set the model for this agent.""" 
         
     def set_temperature(self, temperature: float) -> None:
-        """Set the temperature for generation."""
+        """Set the temperature for generation.""" 
         
     def set_max_tokens(self, max_tokens: int) -> None:
-        """Set maximum tokens for generation."""
+        """Set maximum tokens for generation.""" 
         
     def store_result(self, key: str, value: Any) -> None:
-        """Store a result from the agent's operations."""
+        """Store a result from the agent's operations.""" 
         
     def get_result(self, key: str, default: Any = None) -> Any:
-        """Get a stored result."""
+        """Get a stored result.""" 
         
     @abc.abstractmethod
     def generate(self, prompt: str) -> str:
-        """Generate content based on a prompt."""
+        """Generate content based on a prompt.""" 
         
     @abc.abstractmethod
     def process(self, input_data: Any) -> Any:
-        """Process input data and produce output."""
+        """Process input data and produce output.""" 
 ```
 
 #### `RAGAgent`
@@ -444,7 +612,7 @@ class RAGAgent(Agent):
     )
     
     def set_rag_engine(self, rag_engine: RAGEngine) -> None:
-        """Set the RAG engine for this agent."""
+        """Set the RAG engine for this agent.""" 
         
     def retrieve_context(
         self,
@@ -456,7 +624,7 @@ class RAGAgent(Agent):
         threshold: float = 0.0,
         deduplicate: bool = True
     ) -> str:
-        """Retrieve and format context for generation."""
+        """Retrieve and format context for generation.""" 
         
     def create_enhanced_prompt(
         self,
@@ -466,13 +634,13 @@ class RAGAgent(Agent):
         skill_level: str = "Beginner",
         top_k: int = 5
     ) -> str:
-        """Create a RAG-enhanced prompt by adding retrieved context."""
+        """Create a RAG-enhanced prompt by adding retrieved context.""" 
         
     def generate(self, prompt: str) -> str:
-        """Generate content based on a prompt."""
+        """Generate content based on a prompt.""" 
         
     def process(self, input_data: Dict[str, Any]) -> str:
-        """Process input data and produce output using RAG enhancement."""
+        """Process input data and produce output using RAG enhancement.""" 
 ```
 
 #### `OllamaClient`
@@ -492,7 +660,7 @@ class OllamaClient:
         max_tokens: int = 1000,
         stream: bool = False
     ) -> Union[str, Generator[str, None, None]]:
-        """Generate a completion from a prompt."""
+        """Generate a completion from a prompt.""" 
         
     def chat(
         self, 
@@ -502,24 +670,24 @@ class OllamaClient:
         max_tokens: int = 1000,
         stream: bool = False
     ) -> Union[Dict[str, Any], Generator[Dict[str, Any], None, None]]:
-        """Generate a chat completion from a list of messages."""
+        """Generate a chat completion from a list of messages.""" 
         
     def list_models(self) -> List[Dict[str, Any]]:
-        """List available models in Ollama."""
+        """List available models in Ollama.""" 
         
     def embed(
         self,
         text: str,
         model: Optional[str] = None
     ) -> List[float]:
-        """Generate embedding for text using Ollama's embedding API."""
+        """Generate embedding for text using Ollama's embedding API.""" 
         
     def embed_batch(
         self,
         texts: List[str],
         model: Optional[str] = None
     ) -> List[List[float]]:
-        """Generate embeddings for multiple texts using Ollama's API."""
+        """Generate embeddings for multiple texts using Ollama's API.""" 
 ```
 
 #### `PromptTemplate`
@@ -532,30 +700,30 @@ class PromptTemplate:
     
     @classmethod
     def from_preset(cls, template_name: str) -> 'PromptTemplate':
-        """Create a template from a predefined preset."""
+        """Create a template from a predefined preset.""" 
         
     @classmethod
     def from_file(cls, file_path: Union[str, Path]) -> 'PromptTemplate':
-        """Load a template from a file."""
+        """Load a template from a file.""" 
         
     def save_to_file(self, file_path: Union[str, Path], format: str = 'json') -> None:
-        """Save the template to a file."""
+        """Save the template to a file.""" 
         
     def format(self, **kwargs) -> str:
-        """Format the template with the provided values."""
+        """Format the template with the provided values.""" 
         
     def add_examples(self, examples: List[Dict[str, str]]) -> 'PromptTemplate':
-        """Add few-shot learning examples to a template."""
+        """Add few-shot learning examples to a template.""" 
         
     def create_chat_messages(
         self, 
         system_template: Optional['PromptTemplate'] = None,
         **kwargs
     ) -> List[Dict[str, str]]:
-        """Create a list of chat messages from the template."""
+        """Create a list of chat messages from the template.""" 
         
     def validate(self) -> Tuple[bool, Optional[str]]:
-        """Validate the template structure and variables."""
+        """Validate the template structure and variables.""" 
 ```
 
 ### Utility Functions
@@ -564,44 +732,44 @@ class PromptTemplate:
 
 ```python
 def check_for_ollama() -> bool:
-    """Check if Ollama server is available and responding."""
+    """Check if Ollama server is available and responding.""" 
     
 def is_debug_mode() -> bool:
-    """Check if debug mode is enabled via environment variable."""
+    """Check if debug mode is enabled via environment variable.""" 
     
 def detect_gpu() -> Tuple[bool, Optional[str]]:
-    """Detect if a CUDA-capable GPU is available on the system."""
+    """Detect if a CUDA-capable GPU is available on the system.""" 
     
 def upgrade_faiss_to_gpu() -> Tuple[bool, str]:
-    """Attempt to upgrade faiss-cpu to faiss-gpu if a GPU is available."""
+    """Attempt to upgrade faiss-cpu to faiss-gpu if a GPU is available.""" 
     
 def check_faiss_gpu_capability() -> bool:
-    """Check if FAISS has GPU support enabled."""
+    """Check if FAISS has GPU support enabled.""" 
 ```
 
 #### Path Utilities
 
 ```python
 def ensure_directory(path: Union[str, Path]) -> Path:
-    """Ensure a directory exists, creating it if necessary."""
+    """Ensure a directory exists, creating it if necessary.""" 
     
 def get_project_root() -> Path:
-    """Get the project root directory."""
+    """Get the project root directory.""" 
     
 def get_temp_directory() -> Path:
-    """Get a temporary directory for Osyllabi."""
+    """Get a temporary directory for Osyllabi.""" 
     
 def get_output_directory() -> Path:
-    """Get the output directory, creating it if necessary."""
+    """Get the output directory, creating it if necessary.""" 
     
 def create_unique_file_path(base_dir: Union[str, Path], name: str, extension: str = "md") -> Path:
-    """Create a unique file path that doesn't overwrite existing files."""
+    """Create a unique file path that doesn't overwrite existing files.""" 
     
 def find_source_files(
     source_paths: List[Union[str, Path]], 
     recursive: bool = True
 ) -> List[Path]:
-    """Find all source files from a list of directories and files."""
+    """Find all source files from a list of directories and files.""" 
 ```
 
 #### Vector Operations
@@ -609,18 +777,18 @@ def find_source_files(
 ```python
 def cosine_similarity(vec1: Union[List[float], np.ndarray], 
                      vec2: Union[List[float], np.ndarray]) -> float:
-    """Calculate cosine similarity between two vectors."""
+    """Calculate cosine similarity between two vectors.""" 
     
 def normalize_vector(vector: Union[List[float], np.ndarray]) -> List[float]:
-    """Normalize a vector to unit length."""
+    """Normalize a vector to unit length.""" 
     
 def create_faiss_index(vectors: List[List[float]], use_gpu: bool = True) -> Any:
-    """Create a FAISS index for efficient similarity search."""
+    """Create a FAISS index for efficient similarity search.""" 
     
 def faiss_search(index: Any, query_vector: List[float], k: int = 5) -> Tuple[List[float], List[int]]:
-    """Search a FAISS index for similar vectors."""
+    """Search a FAISS index for similar vectors.""" 
     
 def batch_cosine_similarity(query_vector: Union[List[float], np.ndarray],
                            vectors: List[List[float]]) -> List[float]:
-    """Compute cosine similarity between a query vector and multiple vectors."""
+    """Compute cosine similarity between a query vector and multiple vectors.""" 
 ```

@@ -6,52 +6,88 @@ This document outlines how Osyllabi generates new curriculums using AI integrati
 
 ```mermaid
 flowchart TD
+    %% Styling
+    classDef userInput fill:#d0f4de,stroke:#333,stroke-width:2px
+    classDef aiComponent fill:#f9c6d9,stroke:#333,stroke-width:2px
+    classDef ragComponent fill:#c8e7ff,stroke:#333,stroke-width:1px
+    classDef dataStore fill:#fff2b2,stroke:#333,stroke-width:1px,stroke-dasharray: 5 2
+    classDef processingStep fill:#d9d9d9,stroke:#333,stroke-width:1px
+    classDef exportComponent fill:#e5c1fd,stroke:#333,stroke-width:1px
+    
     %% User Input and Command Flow
-    A[User Input] --> B[CLI Router]
+    A[User Input]:::userInput --> B[CLI Router]
     B --> C[CreateCommand]
     C --> D[Curriculum.create]
     
     %% Curriculum Generation Path
-    D --> RunID[Generate Run ID]
-    RunID --> PrepDir[Prepare Directory Structure]
-    PrepDir --> E{Ollama Available?}
+    subgraph PrepSteps [Preparation]
+        direction TB
+        RunID[Generate Run ID]:::processingStep
+        PrepDir[Prepare Directory Structure]:::processingStep
+        E{Ollama Available?}
+    end
     
-    E -->|Yes| F[CurriculumWorkflow]
+    D --> PrepSteps
+    
+    PrepSteps --> F[CurriculumWorkflow]
     E -->|No| Error[RuntimeError: Ollama Required]
     Error --> Exit[Exit with Error Code]
     
     %% AI Integration
-    F --> H[OllamaClient]
-    H --> H1[Generate]
-    H --> H2[Chat]
-    H --> H3[Embed]
+    subgraph AILayer [AI Integration Layer]
+        direction TB
+        H[OllamaClient]:::aiComponent
+        H1[Generate]
+        H2[Chat]
+        H3[Embed]
+        
+        H --> H1 & H2 & H3
+    end
+    
+    F --> AILayer
     
     %% RAG System
     subgraph RAG [Retrieval-Augmented Generation]
-        RAGEngine[RAGEngine]
-        EmbGen[EmbeddingGenerator]
-        TextChk[TextChunker]
-        VecDB[(VectorDatabase)]
-        ContAss[ContextAssembler]
-        QueryForm[QueryFormulator]
-        RAGMonitor[RAGMonitor]
+        direction TB
+        RAGEngine[RAGEngine]:::ragComponent
         
-        RAGEngine --> EmbGen
-        RAGEngine --> TextChk
-        RAGEngine --> VecDB
-        RAGEngine -.-> ContAss
-        RAGEngine -.-> QueryForm
-        RAGEngine -.-> RAGMonitor
+        subgraph Embedding [Embedding Layer]
+            direction TB
+            EmbGen[EmbeddingGenerator]:::ragComponent
+            TextChk[TextChunker]:::ragComponent
+            VecDB[(VectorDatabase)]:::dataStore
+        end
+        
+        subgraph Augmentation [Context Augmentation]
+            direction TB
+            ContAss[ContextAssembler]:::ragComponent
+            QueryForm[QueryFormulator]:::ragComponent
+            RAGMonitor[RAGMonitor]:::ragComponent
+        end
+        
+        RAGEngine --> Embedding
+        RAGEngine -.-> Augmentation
     end
     
+    AILayer <--> RAG
+    
     %% Resource Collection
-    F --> RColl[ResourceCollector]
-    RColl --> I1[URLs]
-    RColl --> I2[Local Files]
+    subgraph Resources [Resource Collection]
+        direction TB
+        RColl[ResourceCollector]
+        I1[URLs]
+        I2[Local Files]
+        
+        RColl --> I1 & I2
+    end
+    
+    F --> Resources
+    Resources --> RAG
     
     %% Vector Utilities and GPU
     subgraph VecUtils [Vector Utilities]
-        VecOps[Vector Operations]
+        direction TB
+        VecOps[Vector Operations]:::ragComponent
         FAISS[FAISS Integration]
         GPU{GPU Available?}
         
@@ -60,33 +96,37 @@ flowchart TD
         GPU -->|No| FCPU[FAISS-CPU]
     end
     
+    VecUtils -.-> RAG
+    
     %% Content Generation with RAG
-    F --> AgentInt[RAGEnhancedAgent]
-    RAGEngine --> AgentInt
-    VecUtils -.-> RAGEngine
+    F --> AgentInt[RAGEnhancedAgent]:::aiComponent
+    RAG --> AgentInt
     
     %% Generation Components
-    F --> K1[Overview Generation]
-    F --> K2[Learning Path Generation]
-    F --> K3[Resources Generation] 
-    F --> K4[Projects Generation]
+    subgraph GenComponents [Content Generation]
+        direction TB
+        K1[Overview Generation]:::processingStep
+        K2[Learning Path Generation]:::processingStep
+        K3[Resources Generation]:::processingStep
+        K4[Projects Generation]:::processingStep
+    end
     
-    RAGEngine -.-> K1
-    RAGEngine -.-> K2
-    RAGEngine -.-> K3
-    RAGEngine -.-> K4
+    F --> GenComponents
+    AgentInt --> GenComponents
     
     %% Assembly
-    K1 --> L[Content Assembly]
-    K2 --> L
-    K3 --> L
-    K4 --> L
+    GenComponents --> L[Content Assembly]:::processingStep
     
     %% Export
+    subgraph ExportOptions [Export Formats]
+        direction TB
+        M1[Markdown]:::exportComponent
+        M2[JSON]:::exportComponent
+        M3[PDF/HTML/etc]:::exportComponent
+    end
+    
     L --> J[Export Curriculum]
-    J --> M1[Markdown]
-    J --> M2[JSON]
-    J --> M3[PDF/HTML/etc]
+    J --> ExportOptions
 ```
 
 ## Core Components

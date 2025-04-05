@@ -2,6 +2,55 @@
 
 The Vector Database system in Osyllabi provides efficient storage and retrieval of embeddings for the RAG (Retrieval-Augmented Generation) functionality.
 
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+    classDef dataComponent fill:#f9f,stroke:#333,stroke-width:2px
+    classDef dataFlow fill:#bbf,stroke:#333,stroke-width:1px
+    classDef storage fill:#dfd,stroke:#333,stroke-width:1px
+    
+    Input[Document Text] -->|Chunking| Chunks[Text Chunks]
+    Chunks -->|Embedding| Vectors[Vector Embeddings]
+    
+    subgraph VectorDB ["Vector Database"]
+        DataFrame[In-Memory DataFrame]:::dataComponent
+        
+        subgraph StorageComponents ["Storage Components"]
+            DocTable[Document Metadata]:::storage
+            ChunkTable[Chunk Data]:::storage
+            VectorTable[Vector Data]:::storage
+            
+            DocTable <-->|References| ChunkTable
+            ChunkTable <-->|References| VectorTable
+        end
+        
+        subgraph QueryComponents ["Query Components"]
+            Search[Similarity Search]:::dataFlow
+            Filter[Source Filter]:::dataFlow
+            Ranking[Result Ranking]:::dataFlow
+            
+            Search --> Filter
+            Filter --> Ranking
+        end
+        
+        DataFrame <--> StorageComponents
+        QueryComponents <--> DataFrame
+    end
+    
+    Vectors -->|Add to DB| VectorDB
+    QueryVector[Query Vector] -->|Search| QueryComponents
+    QueryComponents -->|Results| Results[Ranked Results]
+    
+    subgraph Future ["Future Persistence"]
+        SQLite[(SQLite)]:::storage
+        FAISS[FAISS Index]:::dataComponent
+        
+        VectorDB -.->|Persist| SQLite
+        VectorDB -.->|Accelerated Search| FAISS
+    end
+```
+
 ## Overview
 
 The vector database implementation uses an in-memory pandas DataFrame approach for development and testing, with potential for SQLite-based persistence in future releases.
