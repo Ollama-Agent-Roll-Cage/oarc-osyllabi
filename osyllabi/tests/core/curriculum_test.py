@@ -40,7 +40,7 @@ class TestCurriculum(unittest.TestCase):
         self.mock_workflow.generate_full_curriculum.return_value = "# Test Curriculum\n\nTest content"
         
         # Set model attribute on workflow mock for generate_with_llama_index test
-        self.mock_workflow.model = "llama3"
+        self.mock_workflow.model = "llama3.1:latest"
         
         # Patch file operations
         self.open_patcher = patch('builtins.open', mock_open())
@@ -291,7 +291,7 @@ class TestCurriculum(unittest.TestCase):
         # Agent should be created with correct params
         mock_rag_agent_class.assert_called_once_with(
             name="LlamaIndex_Curriculum",
-            model="llama3",  # Uses the mocked workflow.model
+            model="llama3.1:latest",  # Uses the mocked workflow.model
             rag_engine=self.mock_rag_engine  # Uses the mocked engine
         )
         

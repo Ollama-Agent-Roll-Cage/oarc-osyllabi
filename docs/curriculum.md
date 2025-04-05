@@ -321,7 +321,7 @@ This approach utilizes:
 ### Customization
 
 - **Titles**: Provide descriptive titles for better organization
-- **Skill Levels**: Be consistent with skill level designations (Beginner, Intermediate, Advanced, Expert)
+- **Skill Levels**: Be consistent with skill level designations (Beginner, Intermediate, Advanced, Expert, Master, Pioneer)
 - **Export Paths**: Organize exports by topic for better file management
 
 ### Error Handling

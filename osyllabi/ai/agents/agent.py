@@ -25,7 +25,7 @@ class Agent(abc.ABC):
     def __init__(
         self,
         name: str,
-        model: str = "llama3",
+        model: str = "llama3.1:latest",
         temperature: float = 0.7,
         max_tokens: int = 1000,
         version: str = "1.0"

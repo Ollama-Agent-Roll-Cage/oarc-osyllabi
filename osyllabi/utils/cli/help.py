@@ -41,7 +41,7 @@ def get_command_usage_info(command_name: str) -> Tuple[str, Dict[str, str], List
         options.update({
             "TOPIC": "Main topic or subject for the curriculum (required)",
             "--title, -t": "Custom title for the curriculum (default: '<topic> Curriculum')",
-            "--level, -s": "Target skill level (Beginner, Intermediate, Advanced, Expert)",
+            "--level, -s": "Target skill level (Beginner, Intermediate, Advanced, Expert, Master, Pioneer)",
             "--links, -l": "URLs to include as resources",
             "--source": "Source files or directories to include\nDefault: current directory",
             "--export-path, -o": "Directory to export the curriculum",
@@ -53,7 +53,7 @@ def get_command_usage_info(command_name: str) -> Tuple[str, Dict[str, str], List
             'osyllabi create "Python Programming" --links "https://docs.python.org" --format pdf',
             'osyllabi create "Web Development" -t "Full Stack Web Dev" -s Advanced',
             'osyllabi create "Data Science" --format json',
-            'osyllabi create "Data Science" --debug'
+            'osyllabi create "Machine Learning" --level Master --title "Advanced Neural Models"'
         ]
     elif command_name == "clean":
         usage += " [options]"

@@ -41,7 +41,8 @@ dependencies = [
     "beautifulsoup4>=4.13.0",  # HTML parsing and extraction
     "markdown>=3.7.0",         # markdown processing
     "pymupdf>=1.25.5",         # PDF processing
-    "python-docx>=1.1.2",       # DOCX processing
+    "python-docx>=1.1.2",      # DOCX processing
+    "unstructured>=0.17.2",    # Image and document processing
     
     # Machine learning 
     "scikit-learn>=1.6.1",     # vector operations and ML utilities

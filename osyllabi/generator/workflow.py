@@ -27,7 +27,7 @@ class CurriculumWorkflow:
         topic: str,
         skill_level: str = "Beginner",
         client: Optional[OllamaClient] = None,
-        model: str = "llama3",
+        model: str = "llama3.1:latest",
         temperature: float = 0.7,
         use_langchain: bool = True
     ):

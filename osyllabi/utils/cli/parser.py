@@ -124,7 +124,7 @@ def setup_create_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--level", "-s", 
         default="Beginner",
-        choices=["Beginner", "Intermediate", "Advanced", "Expert"],
+        choices=["Beginner", "Intermediate", "Advanced", "Expert", "Master", "Pioneer"],
         help="Target skill level"
     )
     parser.add_argument(

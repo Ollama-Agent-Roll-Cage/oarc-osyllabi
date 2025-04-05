@@ -159,8 +159,9 @@ class ResourceManager:
         Returns:
             Deduplicated resources
         """
-        # Simple deduplication based on content similarity
-        seen_signatures = set()
+        # Separate signature sets for URLs and files
+        url_signatures = set()
+        file_signatures = set()
         
         # Deduplicate URLs
         unique_urls = {}
@@ -174,9 +175,9 @@ class ResourceManager:
             signature = content[:100].strip().lower()
             signature = re.sub(r'\s+', ' ', signature)
             
-            if signature not in seen_signatures:
+            if signature not in url_signatures:
                 unique_urls[url] = data
-                seen_signatures.add(signature)
+                url_signatures.add(signature)
         
         # Deduplicate files
         unique_files = {}
@@ -190,13 +191,20 @@ class ResourceManager:
             signature = content[:100].strip().lower()
             signature = re.sub(r'\s+', ' ', signature)
             
-            if signature not in seen_signatures:
+            if signature not in file_signatures:
                 unique_files[path] = data
-                seen_signatures.add(signature)
+                file_signatures.add(signature)
+        
+        # Add deduplication statistics
+        urls_removed = len(resources.get("urls", {})) - len(unique_urls)
+        files_removed = len(resources.get("files", {})) - len(unique_files)
         
         # Update resources with deduplicated content
         resources["urls"] = unique_urls
         resources["files"] = unique_files
+        resources["stats"]["duplicates_removed"] = urls_removed + files_removed
+        
+        log.debug(f"Deduplication removed {urls_removed} URL(s) and {files_removed} file(s)")
         
         return resources
     

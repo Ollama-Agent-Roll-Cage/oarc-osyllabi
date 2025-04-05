@@ -23,7 +23,7 @@ class EmbeddingGenerator:
     
     def __init__(
         self,
-        model_name: str = "llama3",
+        model_name: str = "llama3.1:latest",
         cache_embeddings: bool = True,
         max_cache_size: int = 1000
     ):

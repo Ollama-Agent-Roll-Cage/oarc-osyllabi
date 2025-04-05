@@ -31,3 +31,6 @@ DEFAULT_CONFIG_DIRNAME = ".osyllabi"
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_MAX_TOKENS = 4000
 DEFAULT_TOP_P = 1.0
+
+# Skill levels for curriculum generation
+SKILL_LEVELS = ["Beginner", "Intermediate", "Advanced", "Expert", "Master", "Pioneer"]

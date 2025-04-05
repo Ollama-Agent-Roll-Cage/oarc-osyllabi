@@ -39,7 +39,7 @@ class Curriculum:
         Args:
             topic: The main topic/subject of the curriculum (required normally, but optional when args is provided)
             title: Optional title (defaults to "{topic} Curriculum")
-            skill_level: Target skill level (Beginner, Intermediate, Advanced, Expert)
+            skill_level: Target skill level (Beginner, Intermediate, Advanced, Expert, Master, Pioneer)
             links: List of URLs to include as resources
             source: Source files or directories to include
             args: Optional command-line arguments
