@@ -1,14 +1,14 @@
 # Osyllabi
 
-A streamlined Python app for designing personalized curriculums using AI, web crawling, and data integration.
+A powerful Python application designed to create personalized curriculums using cutting-edge AI, web crawling, and data integration.
 
-## Features
+## Key Features
 
-- AI-driven curriculum generation customized to individual learning goals and preferences.
-- Advanced web crawling to collect the latest and most relevant educational resources.
-- Seamless integration with multiple educational platforms for a unified experience.
-- Fully customizable learning paths with built-in progress tracking and analytics.
-- Flexible export options for easy sharing and implementation of curriculums.
+- **AI-Powered Curriculum Design**: Tailored learning plans based on individual goals and preferences.
+- **Advanced Web Crawling**: Automatically gathers the latest and most relevant educational resources.
+- **Platform Integration**: Seamlessly connects with various educational platforms for a unified learning experience.
+- **Customizable Learning Paths**: Offers flexibility in structuring courses with built-in progress tracking and analytics.
+- **Flexible Export Options**: Easily share and implement curriculums in multiple formats.
 
 ## Installation
 
